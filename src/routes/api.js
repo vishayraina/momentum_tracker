@@ -3,6 +3,7 @@ import { LifeDirectionService } from '../services/life-direction-service.js';
 import { AreaService } from '../services/area-service.js';
 import { PriorityService } from '../services/priority-service.js';
 import { GoalService } from '../services/goal-service.js';
+import { createEventRouter } from './event-routes.js';
 
 export function createApiRouter(db) {
   const router = express.Router();
@@ -459,6 +460,9 @@ export function createApiRouter(db) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // --- Progress Events & Timeline Sub-Router ---
+  router.use(createEventRouter(db));
 
   return router;
 }

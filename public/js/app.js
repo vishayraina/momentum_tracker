@@ -1,5 +1,39 @@
 import { api } from './api.js';
 
+// Event Type Metadata & Descriptions
+export const EVENT_TYPE_CONFIG = {
+  SPARK: {
+    icon: '⚡',
+    label: 'Spark',
+    placeholder: 'e.g., Read 5 pages, maintained habit, reviewed PR...'
+  },
+  FIRE: {
+    icon: '🔥',
+    label: 'Fire',
+    placeholder: 'e.g., High-energy coding burst, solved stubborn race condition...'
+  },
+  COOK_SESSION: {
+    icon: '🍲',
+    label: 'Cook Session',
+    placeholder: 'e.g., 90m deep work exploration of consensus logs...'
+  },
+  SERVE: {
+    icon: '🚀',
+    label: 'Serve',
+    placeholder: 'e.g., Published architecture blog post, demoed prototype...'
+  },
+  GOAL_ACHIEVED: {
+    icon: '🎯',
+    label: 'Goal Achieved',
+    placeholder: 'e.g., All 25 test cases green, milestone accomplished!'
+  },
+  SYNTHESIS: {
+    icon: '💡',
+    label: 'Synthesis',
+    placeholder: 'e.g., Synthesized lessons learned and mental model...'
+  }
+};
+
 // Application State
 const state = {
   hierarchy: [],
@@ -13,7 +47,11 @@ const state = {
   activeGoalModalPriority: null,
   activeGoalModalGoal: null,
   activeHistoryPriorityId: null,
-  activeHistoryPriorityName: null
+  activeHistoryPriorityName: null,
+  activeTimelinePriorityId: null,
+  activeTimelinePriorityName: null,
+  timelineFilter: 'ALL',
+  cachedTimelineEvents: []
 };
 
 // DOM Elements
@@ -36,6 +74,8 @@ const elements = {
   achieveGoalModal: document.getElementById('achieveGoalModal'),
   progressModal: document.getElementById('progressModal'),
   goalHistoryModal: document.getElementById('goalHistoryModal'),
+  logProgressModal: document.getElementById('logProgressModal'),
+  priorityTimelineModal: document.getElementById('priorityTimelineModal'),
 
   // Forms
   priorityForm: document.getElementById('priorityForm'),
@@ -44,11 +84,24 @@ const elements = {
   goalForm: document.getElementById('goalForm'),
   achieveGoalForm: document.getElementById('achieveGoalForm'),
   progressForm: document.getElementById('progressForm'),
+  logProgressForm: document.getElementById('logProgressForm'),
 
   // Goal & Milestone Elements
   goalCountFields: document.getElementById('goalCountFields'),
   goalMeasurementLabels: document.querySelectorAll('.measurement-type-label'),
-  goalHistoryContainer: document.getElementById('goalHistoryContainer')
+  goalHistoryContainer: document.getElementById('goalHistoryContainer'),
+
+  // Log Progress Elements
+  btnLogProgress: document.getElementById('btnLogProgress'),
+  eventTypeCards: document.querySelectorAll('.event-type-card'),
+  logPrioritySelect: document.getElementById('logPrioritySelect'),
+  logGoalSelect: document.getElementById('logGoalSelect'),
+  logNoteInput: document.getElementById('logNote'),
+  logOccurredAtInput: document.getElementById('logOccurredAt'),
+
+  // Timeline Elements
+  timelineStreamContainer: document.getElementById('timelineStreamContainer'),
+  timelineFilterChips: document.querySelectorAll('#timelineFilterChips .filter-chip')
 };
 
 // Notification Helper
@@ -91,6 +144,7 @@ async function loadData() {
     updateHeaderStats();
     populateAreaSelect();
     populateDirectionSelect();
+    populateLogPrioritySelect();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -346,9 +400,17 @@ function renderPriorityCard(p) {
 
       <!-- Card Footer -->
       <div class="priority-footer">
-        <button class="btn btn-ghost btn-sm btn-view-milestones" data-prio-id="${p.id}" data-prio-name="${escapeHtml(p.name)}" title="View sequential milestone history">
-          🏆 Milestones (${p.achieved_goals_count || 0})
-        </button>
+        <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-ghost btn-sm btn-card-quick-log" data-prio-id="${p.id}" data-goal-id="${p.active_goal?.id || ''}" title="Log progress event for this priority">
+            ⚡ + Log
+          </button>
+          <button class="btn btn-ghost btn-sm btn-card-timeline" data-prio-id="${p.id}" data-prio-name="${escapeHtml(p.name)}" title="View chronological event timeline">
+            📜 Timeline
+          </button>
+          <button class="btn btn-ghost btn-sm btn-view-milestones" data-prio-id="${p.id}" data-prio-name="${escapeHtml(p.name)}" title="View sequential milestone history">
+            🏆 Milestones (${p.achieved_goals_count || 0})
+          </button>
+        </div>
         <div class="priority-actions">
           <button class="btn btn-ghost btn-sm btn-inspect" data-id="${p.id}" title="View Operating Definitions">Definitions</button>
           <button class="btn btn-ghost btn-sm btn-edit-priority" data-id="${p.id}" title="Edit Priority">✎</button>
@@ -552,6 +614,22 @@ function attachWorkspaceListeners() {
   document.querySelectorAll('.btn-view-milestones').forEach(btn => {
     btn.addEventListener('click', () => {
       openGoalHistoryModal(btn.dataset.prioId, btn.dataset.prioName);
+    });
+  });
+
+  // Quick Log Button on Priority Card
+  document.querySelectorAll('.btn-card-quick-log').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLogProgressModal(btn.dataset.prioId, btn.dataset.goalId || null);
+    });
+  });
+
+  // Timeline Button on Priority Card
+  document.querySelectorAll('.btn-card-timeline').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openPriorityTimelineModal(btn.dataset.prioId, btn.dataset.prioName);
     });
   });
 }
@@ -808,6 +886,286 @@ async function openGoalHistoryModal(priorityId, priorityName) {
   } catch (err) {
     container.innerHTML = `<div style="color: #f43f5e; padding: 1rem 0;">Failed to load milestones: ${escapeHtml(err.message)}</div>`;
   }
+}
+
+// --- Log Progress & Timeline Modal Controllers ---
+
+function updateEventTypeStyles() {
+  const selectedType = elements.logProgressForm.querySelector('input[name="logEventType"]:checked')?.value || 'SPARK';
+  elements.eventTypeCards.forEach(card => {
+    const radio = card.querySelector('input[type="radio"]');
+    if (radio && radio.checked) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
+  });
+
+  // Adjust placeholder from metadata dictionary
+  if (elements.logNoteInput) {
+    const config = EVENT_TYPE_CONFIG[selectedType];
+    elements.logNoteInput.placeholder = config?.placeholder || 'One-line note or learning...';
+  }
+}
+
+function populateLogPrioritySelect(defaultPriorityId = null, defaultGoalId = null) {
+  const select = elements.logPrioritySelect;
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Select a Priority...</option>';
+
+  // Direct single-pass traversal of pre-grouped hierarchy
+  state.hierarchy.forEach(dir => {
+    dir.areas.forEach(area => {
+      if (area.priorities && area.priorities.length > 0) {
+        const group = document.createElement('optgroup');
+        group.label = `${dir.name} > ${area.name}`;
+        area.priorities.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} (${p.current_phase})`;
+          if (p.active_goal) {
+            opt.dataset.hasActiveGoal = 'true';
+            opt.dataset.activeGoalId = p.active_goal.id;
+            opt.dataset.activeGoalTitle = p.active_goal.title;
+          }
+          group.appendChild(opt);
+        });
+        select.appendChild(group);
+      }
+    });
+  });
+
+  if (defaultPriorityId) {
+    select.value = defaultPriorityId;
+  }
+  populateLogGoalSelect(defaultGoalId);
+}
+
+async function populateLogGoalSelect(defaultGoalId = null) {
+  const goalSelect = elements.logGoalSelect;
+  if (!goalSelect) return;
+
+  const priorityId = elements.logPrioritySelect.value;
+  if (!priorityId) {
+    goalSelect.innerHTML = '<option value="">None / General Priority Level</option>';
+    return;
+  }
+
+  goalSelect.innerHTML = '<option value="">Loading milestones...</option>';
+
+  try {
+    const goals = await api.getGoals(priorityId);
+    goalSelect.innerHTML = '<option value="">None / General Priority Level</option>';
+
+    if (goals && goals.length > 0) {
+      goals.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        const statusIcon = g.status === 'ACHIEVED' ? '✓' : (g.status === 'ACTIVE' ? '🎯' : '•');
+        opt.textContent = `${statusIcon} #${g.sequence_number}: ${g.title} (${g.status})`;
+        if (defaultGoalId && g.id === defaultGoalId) {
+          opt.selected = true;
+        } else if (!defaultGoalId && g.status === 'ACTIVE') {
+          opt.selected = true;
+        }
+        goalSelect.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    goalSelect.innerHTML = '<option value="">None / General Priority Level</option>';
+  }
+}
+
+function openLogProgressModal(defaultPriorityId = null, defaultGoalId = null) {
+  const form = elements.logProgressForm;
+  form.reset();
+
+  // Pre-fill local current timestamp
+  const now = new Date();
+  const localIso = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  elements.logOccurredAtInput.value = localIso;
+
+  // Set default event type to SPARK
+  const sparkRadio = form.querySelector('input[name="logEventType"][value="SPARK"]');
+  if (sparkRadio) sparkRadio.checked = true;
+  updateEventTypeStyles();
+
+  populateLogPrioritySelect(defaultPriorityId, defaultGoalId);
+  openModal(elements.logProgressModal);
+
+  // Auto focus note or priority select
+  setTimeout(() => {
+    if (defaultPriorityId) {
+      elements.logNoteInput?.focus();
+    } else {
+      elements.logPrioritySelect?.focus();
+    }
+  }, 100);
+}
+
+function formatRelativeTime(isoStr) {
+  if (!isoStr) return '';
+  const date = new Date(isoStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffHr = Math.round(diffMin / 60);
+  const diffDays = Math.round(diffHr / 24);
+
+  if (diffSec < 45) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function openPriorityTimelineModal(priorityId, priorityName) {
+  state.activeTimelinePriorityId = priorityId;
+  state.activeTimelinePriorityName = priorityName;
+  state.timelineFilter = 'ALL';
+
+  document.getElementById('timelineModalTitle').textContent = `${priorityName}`;
+  document.getElementById('timelineSubtitle').textContent = `Chronological immutable event ledger & audit trail`;
+
+  // Reset filter chips
+  elements.timelineFilterChips.forEach(c => {
+    if (c.dataset.tlFilter === 'ALL') c.classList.add('active');
+    else c.classList.remove('active');
+  });
+
+  openModal(elements.priorityTimelineModal);
+  await refreshPriorityTimeline();
+}
+
+async function refreshPriorityTimeline() {
+  if (!state.activeTimelinePriorityId) return;
+
+  const container = elements.timelineStreamContainer;
+  container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 1.5rem 0; text-align: center;">Loading chronological events...</div>';
+
+  try {
+    const data = await api.getPriorityTimeline(state.activeTimelinePriorityId, true);
+    state.cachedTimelineEvents = data.events || [];
+
+    // Update count pills
+    const counts = data.counts || {};
+    document.getElementById('tlTotalCount').textContent = counts.total || 0;
+    document.getElementById('tlSparkCount').textContent = counts.spark || 0;
+    document.getElementById('tlFireCount').textContent = counts.fire || 0;
+    document.getElementById('tlCookCount').textContent = counts.cook_session || 0;
+    document.getElementById('tlServeCount').textContent = counts.serve || 0;
+    document.getElementById('tlGoalCount').textContent = counts.goal_achieved || 0;
+    document.getElementById('tlVoidedCount').textContent = counts.voided || 0;
+
+    renderTimelineStream();
+  } catch (err) {
+    container.innerHTML = `<div style="color: #f43f5e; padding: 1rem 0;">Failed to load timeline: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderTimelineStream() {
+  const container = elements.timelineStreamContainer;
+  if (!container) return;
+
+  const filter = state.timelineFilter || 'ALL';
+  const filteredEvents = state.cachedTimelineEvents.filter(e => {
+    if (filter === 'ALL') return true;
+    if (filter === 'ACTIVE') return e.status === 'ACTIVE';
+    if (filter === 'VOIDED') return e.status === 'VOIDED';
+    return e.event_type === filter && e.status === 'ACTIVE';
+  });
+
+  if (filteredEvents.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary); border: 1px dashed var(--border-subtle); border-radius: var(--radius-lg);">
+        <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">📜</div>
+        <div style="font-weight: 500;">No progress events match the current filter.</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Log meaningful progress to build this Priority's momentum narrative.</div>
+        <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" id="btnTimelineEmptyLog">+ Log First Event</button>
+      </div>
+    `;
+    document.getElementById('btnTimelineEmptyLog')?.addEventListener('click', () => {
+      closeModal(elements.priorityTimelineModal);
+      openLogProgressModal(state.activeTimelinePriorityId);
+    });
+    return;
+  }
+
+  container.innerHTML = filteredEvents.map(e => {
+    const isVoided = e.status === 'VOIDED';
+    const typeLower = e.event_type.toLowerCase();
+    const exactDateStr = new Date(e.occurred_at).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const relativeTime = formatRelativeTime(e.occurred_at);
+
+    const config = EVENT_TYPE_CONFIG[e.event_type] || { icon: '⚡', label: e.event_type.replace('_', ' ') };
+    const typeEmoji = config.icon;
+    const typeDisplay = config.label;
+
+    return `
+      <div class="timeline-item ${typeLower} ${isVoided ? 'voided' : ''}">
+        <div class="timeline-node"></div>
+        <div class="timeline-card ${isVoided ? 'voided' : ''}">
+          <div class="timeline-card-header">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span class="timeline-badge ${typeLower}">${typeEmoji} ${typeDisplay}</span>
+              ${isVoided ? `<span class="timeline-badge voided">🚫 VOIDED AUDIT RECORD</span>` : ''}
+            </div>
+            <span class="timeline-timestamp" title="${escapeHtml(e.occurred_at)}">${exactDateStr} (${relativeTime})</span>
+          </div>
+
+          ${e.note ? `
+            <div class="timeline-note">${escapeHtml(e.note)}</div>
+          ` : `
+            <div class="timeline-note" style="color: var(--text-dim); font-style: italic;">No reflection note attached</div>
+          `}
+
+          <div class="timeline-footer">
+            ${e.goal_title ? `
+              <span class="timeline-goal-tag" title="Linked milestone">🎯 ${escapeHtml(e.goal_title)}</span>
+            ` : `
+              <span></span>
+            `}
+
+            ${!isVoided ? `
+              <button class="btn-void-event" data-id="${e.id}" title="Void this entry (preserves immutable audit log)">
+                🚫 Void Entry
+              </button>
+            ` : `
+              <span style="font-size: 0.7rem; color: var(--text-dim);">Immutable Audit Record</span>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Attach Void Listeners
+  container.querySelectorAll('.btn-void-event').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const eventId = btn.dataset.id;
+      const confirmed = confirm('Void this progress event entry? This preserves the permanent audit record while immediately removing it from active momentum metrics.');
+      if (!confirmed) return;
+
+      const reason = prompt('Optional void reason (e.g., accidental duplicate, incorrect priority):');
+      try {
+        await api.voidEvent(eventId, reason);
+        showToast('Event voided. Audit trail preserved.');
+        await refreshPriorityTimeline();
+        await loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
 }
 
 // Setup Global Event Listeners
@@ -1075,6 +1433,104 @@ function setupEvents() {
     if (state.inspectingPriority) {
       closeModal(elements.inspectorModal);
       openPriorityModal(state.inspectingPriority);
+    }
+  });
+
+  // --- Log Progress Listeners ---
+
+  // Top header button
+  elements.btnLogProgress?.addEventListener('click', () => openLogProgressModal());
+
+  // Event Type Card selection in Log Modal
+  elements.eventTypeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const radio = card.querySelector('input[type="radio"]');
+      if (radio) {
+        radio.checked = true;
+        updateEventTypeStyles();
+      }
+    });
+  });
+
+  // Target Priority change updates Goal selector
+  elements.logPrioritySelect?.addEventListener('change', () => populateLogGoalSelect());
+
+  // Submit Log Progress Form
+  elements.logProgressForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const eventType = elements.logProgressForm.querySelector('input[name="logEventType"]:checked')?.value || 'SPARK';
+    const priorityId = elements.logPrioritySelect.value;
+    const goalId = elements.logGoalSelect.value || null;
+    const note = elements.logNoteInput.value.trim() || null;
+    const dateVal = elements.logOccurredAtInput.value;
+    const occurredAt = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+
+    if (!priorityId) {
+      showToast('Please select a Target Priority', 'error');
+      return;
+    }
+
+    try {
+      await api.logEvent({
+        eventType,
+        priorityId,
+        goalId,
+        note,
+        occurredAt
+      });
+
+      showToast(`Progress logged: ${eventType.replace('_', ' ')} recorded!`);
+      closeModal(elements.logProgressModal);
+
+      // If priority timeline modal is open for this priority, refresh it
+      if (state.activeTimelinePriorityId === priorityId) {
+        await refreshPriorityTimeline();
+      }
+
+      await loadData();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // Timeline Quick Log Button
+  document.getElementById('btnTimelineQuickLog')?.addEventListener('click', () => {
+    const activePrioId = state.activeTimelinePriorityId;
+    closeModal(elements.priorityTimelineModal);
+    openLogProgressModal(activePrioId);
+  });
+
+  // Timeline Filter Chips
+  elements.timelineFilterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      elements.timelineFilterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.timelineFilter = chip.dataset.tlFilter;
+      renderTimelineStream();
+    });
+  });
+
+  // Timeline Summary Pill clicks also filter
+  document.querySelectorAll('.timeline-summary-bar .summary-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const filter = pill.dataset.filter;
+      state.timelineFilter = filter;
+      elements.timelineFilterChips.forEach(c => {
+        if (c.dataset.tlFilter === filter) c.classList.add('active');
+        else c.classList.remove('active');
+      });
+      renderTimelineStream();
+    });
+  });
+
+  // Global Keyboard Shortcut: Press 'L' to quickly log progress
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const tag = document.activeElement?.tagName;
+      if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) {
+        e.preventDefault();
+        openLogProgressModal();
+      }
     }
   });
 }

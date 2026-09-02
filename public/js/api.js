@@ -227,5 +227,59 @@ export const api = {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to delete goal');
     return json;
+  },
+
+  // Progress Events & Timeline
+  async getEvents(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.priorityId) searchParams.set('priorityId', params.priorityId);
+    if (params.goalId) searchParams.set('goalId', params.goalId);
+    if (params.eventType) searchParams.set('eventType', params.eventType);
+    if (params.status) searchParams.set('status', params.status);
+    if (params.limit) searchParams.set('limit', params.limit);
+    if (params.sort) searchParams.set('sort', params.sort);
+
+    const query = searchParams.toString();
+    const url = query ? `${API_BASE}/events?${query}` : `${API_BASE}/events`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch events');
+    return json.data;
+  },
+
+  async logEvent(payload) {
+    const res = await fetch(`${API_BASE}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to log progress event');
+    return json.data;
+  },
+
+  async getEvent(id) {
+    const res = await fetch(`${API_BASE}/events/${id}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch event');
+    return json.data;
+  },
+
+  async voidEvent(id, reason = null) {
+    const res = await fetch(`${API_BASE}/events/${id}/void`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to void event');
+    return json.data;
+  },
+
+  async getPriorityTimeline(priorityId, includeVoided = true) {
+    const res = await fetch(`${API_BASE}/priorities/${priorityId}/events?includeVoided=${includeVoided}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch priority timeline');
+    return json.data;
   }
 };

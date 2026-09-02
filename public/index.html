@@ -45,7 +45,13 @@
       </div>
 
       <div class="header-actions">
-        <button class="btn btn-primary" id="btnNewPriority">
+        <button class="btn btn-primary btn-log-progress" id="btnLogProgress" title="Log meaningful progress event (Shortcut: L)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          + Log Progress
+        </button>
+        <button class="btn btn-secondary" id="btnNewPriority">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 5v14M5 12h14"/>
           </svg>
@@ -493,6 +499,185 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary modal-close">Close</button>
         <button type="button" class="btn btn-primary" id="btnHistoryNewGoal">+ Set Next Milestone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fast Log Progress Modal -->
+  <div class="modal-backdrop" id="logProgressModal" role="dialog" aria-modal="true" aria-labelledby="logProgressTitle">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="logProgressTitle">⚡ Log Meaningful Progress</h3>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">Record deliberate activity in seconds</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="logProgressForm">
+        <div class="modal-body">
+          <!-- Step 1: Event Type Selection -->
+          <div class="form-group">
+            <label class="form-label">
+              1. Event Type *
+              <span class="form-hint">Type of energy or milestone output</span>
+            </label>
+            <div class="event-type-grid" id="eventTypeGrid">
+              <label class="event-type-card spark selected" data-type="SPARK">
+                <input type="radio" name="logEventType" value="SPARK" checked>
+                <div class="event-card-icon">⚡</div>
+                <div class="event-card-content">
+                  <div class="event-card-title">Spark</div>
+                  <div class="event-card-sub">Baseline continuity energy</div>
+                </div>
+              </label>
+
+              <label class="event-type-card fire" data-type="FIRE">
+                <input type="radio" name="logEventType" value="FIRE">
+                <div class="event-card-icon">🔥</div>
+                <div class="event-card-content">
+                  <div class="event-card-title">Fire</div>
+                  <div class="event-card-sub">Deliberate energy burst</div>
+                </div>
+              </label>
+
+              <label class="event-type-card cook" data-type="COOK_SESSION">
+                <input type="radio" name="logEventType" value="COOK_SESSION">
+                <div class="event-card-icon">🍲</div>
+                <div class="event-card-content">
+                  <div class="event-card-title">Cook Session</div>
+                  <div class="event-card-sub">Sustained deep work & focus</div>
+                </div>
+              </label>
+
+              <label class="event-type-card serve" data-type="SERVE">
+                <input type="radio" name="logEventType" value="SERVE">
+                <div class="event-card-icon">🚀</div>
+                <div class="event-card-content">
+                  <div class="event-card-title">Serve</div>
+                  <div class="event-card-sub">Durable output / deliverable</div>
+                </div>
+              </label>
+
+              <label class="event-type-card goal-achieved" data-type="GOAL_ACHIEVED">
+                <input type="radio" name="logEventType" value="GOAL_ACHIEVED">
+                <div class="event-card-icon">🎯</div>
+                <div class="event-card-content">
+                  <div class="event-card-title">Goal Achieved</div>
+                  <div class="event-card-sub">Sequential milestone reached</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Step 2: Target Priority & Linked Goal -->
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label class="form-label" for="logPrioritySelect">2. Target Priority *</label>
+              <select id="logPrioritySelect" class="form-select" required>
+                <option value="">Select a Priority...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="logGoalSelect">
+                Linked Milestone
+                <span class="form-hint">Optional context</span>
+              </label>
+              <select id="logGoalSelect" class="form-select">
+                <option value="">None / General Priority Level</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Step 3: Fast Details: Note & Timestamp -->
+          <div class="form-group">
+            <label class="form-label" for="logNote">
+              3. Reflection / Work Note
+              <span class="form-hint">One-line note or learning</span>
+            </label>
+            <input type="text" id="logNote" class="form-input" placeholder="e.g., Read 15 pages of Raft dissertation; sketched out leader election timers">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="logOccurredAt">
+              Timestamp
+              <span class="form-hint">Defaults to now; edit to backdate</span>
+            </label>
+            <input type="datetime-local" id="logOccurredAt" class="form-input" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitLogEvent">Record Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Priority Event Timeline & Audit Modal -->
+  <div class="modal-backdrop" id="priorityTimelineModal" role="dialog" aria-modal="true" aria-labelledby="timelineModalTitle">
+    <div class="modal" style="max-width: 780px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="timelineModalTitle">Priority Event Timeline</h3>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;" id="timelineSubtitle"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Event Count Summary Bar -->
+        <div class="timeline-summary-bar" id="timelineSummaryBar">
+          <div class="summary-pill" data-filter="ALL" title="Total recorded events">
+            <span>Total:</span>
+            <strong id="tlTotalCount">0</strong>
+          </div>
+          <div class="summary-pill spark" data-filter="SPARK" title="Spark continuity events">
+            <span>⚡ Sparks:</span>
+            <strong id="tlSparkCount">0</strong>
+          </div>
+          <div class="summary-pill fire" data-filter="FIRE" title="Deliberate energy bursts">
+            <span>🔥 Fires:</span>
+            <strong id="tlFireCount">0</strong>
+          </div>
+          <div class="summary-pill cook" data-filter="COOK_SESSION" title="Deep work sessions">
+            <span>🍲 Cooks:</span>
+            <strong id="tlCookCount">0</strong>
+          </div>
+          <div class="summary-pill serve" data-filter="SERVE" title="External deliverables">
+            <span>🚀 Serves:</span>
+            <strong id="tlServeCount">0</strong>
+          </div>
+          <div class="summary-pill goal" data-filter="GOAL_ACHIEVED" title="Milestones achieved">
+            <span>🎯 Milestones:</span>
+            <strong id="tlGoalCount">0</strong>
+          </div>
+          <div class="summary-pill voided" data-filter="VOIDED" title="Voided audit records">
+            <span>🚫 Voided:</span>
+            <strong id="tlVoidedCount">0</strong>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="timeline-filter-row">
+          <div class="timeline-filter-chips" id="timelineFilterChips">
+            <button class="filter-chip active" data-tl-filter="ALL">All Entries</button>
+            <button class="filter-chip" data-tl-filter="ACTIVE">Active Only</button>
+            <button class="filter-chip spark" data-tl-filter="SPARK">Sparks</button>
+            <button class="filter-chip fire" data-tl-filter="FIRE">Fires</button>
+            <button class="filter-chip cook" data-tl-filter="COOK_SESSION">Cooks</button>
+            <button class="filter-chip serve" data-tl-filter="SERVE">Serves</button>
+            <button class="filter-chip" data-tl-filter="VOIDED">Voided</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnTimelineQuickLog">+ Log Event</button>
+        </div>
+
+        <!-- Chronological Timeline Stream -->
+        <div class="timeline-stream-container" id="timelineStreamContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Close</button>
       </div>
     </div>
   </div>

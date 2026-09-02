@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Project Foundation & Priority Definition Tracer Bullet, 02: Sequential Goal Configuration & Milestone Lifecycle
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Fast "+ Log Progress" UI modal accessible globally to record `SPARK`, `FIRE`, `COOK_SESSION`, `SERVE`, and `GOAL_ACHIEVED` events.
-- [ ] Events record `user_id`, `priority_id`, optional `goal_id`, `event_type`, `occurred_at`, `note`, and `status`.
-- [ ] Priority detail page renders an immutable chronological event timeline.
-- [ ] User can void an erroneous event (`status: VOIDED`), immediately excluding it from active metrics while retaining the audit record.
-- [ ] Automated tests verify sub-second logging API performance, event storage, timeline sorting, and voiding semantics.
+- [x] Fast "+ Log Progress" UI modal accessible globally to record `SPARK`, `FIRE`, `COOK_SESSION`, `SERVE`, and `GOAL_ACHIEVED` events.
+- [x] Events record `user_id`, `priority_id`, optional `goal_id`, `event_type`, `occurred_at`, `note`, and `status`.
+- [x] Priority detail page renders an immutable chronological event timeline.
+- [x] User can void an erroneous event (`status: VOIDED`), immediately excluding it from active metrics while retaining the audit record.
+- [x] Automated tests verify sub-second logging API performance, event storage, timeline sorting, and voiding semantics.
