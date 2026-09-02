@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Momentum OS - Orbit & Priority Dashboard</title>
+  <meta name="description" content="Self-directed progress and momentum tracking system for persistent life priorities.">
+  <link rel="stylesheet" href="/css/index.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="brand" id="brandLink">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+        </div>
+        <div class="brand-title">Momentum OS</div>
+      </a>
+
+      <div class="header-stats" id="headerStats">
+        <div class="stat-pill" title="Total active priorities in orbit">
+          <span>Orbit Moons:</span>
+          <strong id="totalPrioritiesCount">0</strong>
+        </div>
+        <div class="stat-pill" title="Sparks: baseline continuity">
+          <span style="color: var(--phase-spark)">●</span>
+          <span>Sparks:</span>
+          <strong id="sparkCount">0</strong>
+        </div>
+        <div class="stat-pill" title="Fires: deliberate energy bursts">
+          <span style="color: var(--phase-fire)">●</span>
+          <span>Fires:</span>
+          <strong id="fireCount">0</strong>
+        </div>
+        <div class="stat-pill" title="Cook: sustained deep work sessions">
+          <span style="color: var(--phase-cook)">●</span>
+          <span>Cooks:</span>
+          <strong id="cookCount">0</strong>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-primary" id="btnNewPriority">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          New Priority
+        </button>
+        <button class="btn btn-secondary" id="btnNewArea">+ Area</button>
+        <button class="btn btn-secondary" id="btnNewDirection">+ Direction</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main>
+    <!-- Controls Bar -->
+    <section class="workspace-controls" aria-label="Filters and Search">
+      <div class="filter-group">
+        <span class="filter-label">Filter Phase:</span>
+        <button class="filter-chip active" data-phase="ALL">All Orbit</button>
+        <button class="filter-chip spark" data-phase="SPARK">● Spark</button>
+        <button class="filter-chip fire" data-phase="FIRE">● Fire</button>
+        <button class="filter-chip cook" data-phase="COOK">● Cook</button>
+      </div>
+
+      <div class="search-box">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search priorities, areas, descriptions..." autocomplete="off">
+      </div>
+    </section>
+
+    <!-- Directions & Hierarchy List -->
+    <section class="directions-list" id="directionsContainer" aria-label="Life Directions and Priorities">
+      <!-- Dynamically rendered -->
+    </section>
+  </main>
+
+  <!-- Priority Modal (Create / Edit) -->
+  <div class="modal-backdrop" id="priorityModal" role="dialog" aria-modal="true" aria-labelledby="priorityModalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="priorityModalTitle">New Priority Moon</h3>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="priorityForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="priorityAreaSelect">Area *</label>
+            <select id="priorityAreaSelect" class="form-select" required>
+              <option value="">Select an Area...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="priorityName">Priority Name *</label>
+            <input type="text" id="priorityName" class="form-input" placeholder="e.g., Master Distributed Consensus" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="priorityDesc">
+              Description / Long-Term Vision
+              <span class="form-hint">Optional context</span>
+            </label>
+            <textarea id="priorityDesc" class="form-textarea" placeholder="Why this priority matters and what long-term excellence looks like..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              Operating Phase *
+              <span class="form-hint">Current commitment level</span>
+            </label>
+            <div class="phase-radio-group">
+              <label class="phase-radio-label spark-label selected">
+                <input type="radio" name="currentPhase" value="SPARK" checked>
+                <span class="phase-radio-title" style="color: var(--phase-spark)">● Spark</span>
+                <span class="phase-radio-sub">Baseline maintenance energy</span>
+              </label>
+
+              <label class="phase-radio-label fire-label">
+                <input type="radio" name="currentPhase" value="FIRE">
+                <span class="phase-radio-title" style="color: var(--phase-fire)">● Fire</span>
+                <span class="phase-radio-sub">Intense deliberate injection</span>
+              </label>
+
+              <label class="phase-radio-label cook-label">
+                <input type="radio" name="currentPhase" value="COOK">
+                <span class="phase-radio-title" style="color: var(--phase-cook)">● Cook</span>
+                <span class="phase-radio-sub">Sustained deep work & flow</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="definitions-box">
+            <div class="definitions-box-title">Custom Operating Definitions (Personal Contract)</div>
+
+            <div class="def-field spark-field">
+              <label class="form-label" for="sparkDefinition" style="color: var(--phase-spark)">
+                Spark Definition *
+                <span class="form-hint">Minimum energy required to maintain continuity</span>
+              </label>
+              <textarea id="sparkDefinition" class="form-textarea" placeholder="e.g., Read 5 pages of documentation or review 1 PR" required></textarea>
+            </div>
+
+            <div class="def-field fire-field">
+              <label class="form-label" for="fireDefinition" style="color: var(--phase-fire)">
+                Fire Definition *
+                <span class="form-hint">Exceptional, focused burst of intensity</span>
+              </label>
+              <textarea id="fireDefinition" class="form-textarea" placeholder="e.g., 3+ hours uninterrupted coding on core engine module" required></textarea>
+            </div>
+
+            <div class="def-field cook-field">
+              <label class="form-label" for="cookDefinition" style="color: var(--phase-cook)">
+                Cook Session Definition *
+                <span class="form-hint">Sustained, structured exploration leading to synthesis</span>
+              </label>
+              <textarea id="cookDefinition" class="form-textarea" placeholder="e.g., 90-minute structured deep dive exploring consensus edge cases" required></textarea>
+            </div>
+
+            <div class="def-field synth-field">
+              <label class="form-label" for="synthesisDefinition" style="color: var(--phase-synthesis)">
+                Synthesis Definition *
+                <span class="form-hint">Bar for extracted understanding and learning</span>
+              </label>
+              <textarea id="synthesisDefinition" class="form-textarea" placeholder="e.g., Write a 500-word architectural synthesis note explaining key invariants" required></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Priority</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Life Direction Modal -->
+  <div class="modal-backdrop" id="directionModal" role="dialog" aria-modal="true" aria-labelledby="directionModalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="directionModalTitle">New Life Direction</h3>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="directionForm">
+        <input type="hidden" id="directionId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="directionName">Direction Name *</label>
+            <input type="text" id="directionName" class="form-input" placeholder="e.g., Build Wealth & Technical Mastery" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="directionDesc">Description</label>
+            <textarea id="directionDesc" class="form-textarea" placeholder="High-level overarching domain intent..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="directionSortOrder">Display Order</label>
+            <input type="number" id="directionSortOrder" class="form-input" value="0" min="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Direction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Area Modal -->
+  <div class="modal-backdrop" id="areaModal" role="dialog" aria-modal="true" aria-labelledby="areaModalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="areaModalTitle">New Area</h3>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="areaForm">
+        <input type="hidden" id="areaId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="areaDirectionSelect">Parent Life Direction *</label>
+            <select id="areaDirectionSelect" class="form-select" required>
+              <option value="">Select a Life Direction...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="areaName">Area Name *</label>
+            <input type="text" id="areaName" class="form-input" placeholder="e.g., Software Engineering" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="areaDesc">Description</label>
+            <textarea id="areaDesc" class="form-textarea" placeholder="Group of related long-term commitments..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="areaSortOrder">Display Order</label>
+            <input type="number" id="areaSortOrder" class="form-input" value="0" min="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Area</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Definition Inspector Modal -->
+  <div class="modal-backdrop" id="inspectorModal" role="dialog" aria-modal="true" aria-labelledby="inspectorTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="inspectorTitle">Operating Definitions</h3>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;" id="inspectorSubtitle"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="inspector-card">
+          <div class="inspector-row spark">
+            <div class="inspector-phase-name">● Spark Definition</div>
+            <div class="inspector-text" id="inspectorSpark"></div>
+          </div>
+          <div class="inspector-row fire">
+            <div class="inspector-phase-name">● Fire Definition</div>
+            <div class="inspector-text" id="inspectorFire"></div>
+          </div>
+          <div class="inspector-row cook">
+            <div class="inspector-phase-name">● Cook Session Definition</div>
+            <div class="inspector-text" id="inspectorCook"></div>
+          </div>
+          <div class="inspector-row synth">
+            <div class="inspector-phase-name">● Synthesis Definition</div>
+            <div class="inspector-text" id="inspectorSynthesis"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="btnInspectorEdit">Edit Definitions</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Client Application Script -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

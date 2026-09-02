@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] User can create, edit, list, and delete Life Directions and Areas.
-- [ ] User can create and edit Priorities with custom operating definitions (`spark_definition`, `fire_definition`, `cook_definition`, `synthesis_definition`) and an initial phase.
-- [ ] User can view all active priorities organized by Area in a clean UI.
-- [ ] Domain models and database tables are set up with proper user isolation and validation.
-- [ ] End-to-end automated integration tests verify priority creation, definition updates, and listing.
+- [x] User can create, edit, list, and delete Life Directions and Areas.
+- [x] User can create and edit Priorities with custom operating definitions (`spark_definition`, `fire_definition`, `cook_definition`, `synthesis_definition`) and an initial phase.
+- [x] User can view all active priorities organized by Area in a clean UI.
+- [x] Domain models and database tables are set up with proper user isolation and validation.
+- [x] End-to-end automated integration tests verify priority creation, definition updates, and listing.
