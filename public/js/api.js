@@ -140,5 +140,92 @@ export const api = {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to delete priority');
     return json;
+  },
+
+  // Goals & Milestones
+  async getGoals(priorityId, status = null) {
+    const url = status ? `${API_BASE}/priorities/${priorityId}/goals?status=${status}` : `${API_BASE}/priorities/${priorityId}/goals`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch goals');
+    return json.data;
+  },
+
+  async getActiveGoal(priorityId) {
+    const res = await fetch(`${API_BASE}/priorities/${priorityId}/goals/active`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch active goal');
+    return json.data;
+  },
+
+  async createGoal(priorityId, payload) {
+    const res = await fetch(`${API_BASE}/priorities/${priorityId}/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to create goal');
+    return json.data;
+  },
+
+  async getGoal(id) {
+    const res = await fetch(`${API_BASE}/goals/${id}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch goal');
+    return json.data;
+  },
+
+  async updateGoal(id, payload) {
+    const res = await fetch(`${API_BASE}/goals/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update goal');
+    return json.data;
+  },
+
+  async updateGoalProgress(id, currentValue) {
+    const res = await fetch(`${API_BASE}/goals/${id}/progress`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentValue })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update goal progress');
+    return json.data;
+  },
+
+  async achieveGoal(id, payload) {
+    const res = await fetch(`${API_BASE}/goals/${id}/achieve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to record goal achievement');
+    return json.data;
+  },
+
+  async retireGoal(id, payload) {
+    const res = await fetch(`${API_BASE}/goals/${id}/retire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to retire goal');
+    return json.data;
+  },
+
+  async deleteGoal(id) {
+    const res = await fetch(`${API_BASE}/goals/${id}`, {
+      method: 'DELETE'
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to delete goal');
+    return json;
   }
 };

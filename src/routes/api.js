@@ -2,12 +2,14 @@ import express from 'express';
 import { LifeDirectionService } from '../services/life-direction-service.js';
 import { AreaService } from '../services/area-service.js';
 import { PriorityService } from '../services/priority-service.js';
+import { GoalService } from '../services/goal-service.js';
 
 export function createApiRouter(db) {
   const router = express.Router();
   const lifeDirectionService = new LifeDirectionService(db);
   const areaService = new AreaService(db);
   const priorityService = new PriorityService(db);
+  const goalService = new GoalService(db);
 
   // Middleware to attach userId (supports header or default)
   router.use((req, res, next) => {
@@ -277,6 +279,182 @@ export function createApiRouter(db) {
         return res.status(404).json({ error: 'Priority not found' });
       }
       res.json({ success: true, message: 'Priority deleted' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Goals & Milestones ---
+
+  router.get('/priorities/:priorityId/goals', (req, res) => {
+    try {
+      const { status } = req.query;
+      const items = goalService.listByPriorityId({
+        userId: req.userId,
+        priorityId: req.params.priorityId,
+        status
+      });
+      res.json({ data: items });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get('/priorities/:priorityId/goals/active', (req, res) => {
+    try {
+      const item = goalService.getActiveByPriorityId({
+        userId: req.userId,
+        priorityId: req.params.priorityId
+      });
+      res.json({ data: item });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/priorities/:priorityId/goals', (req, res) => {
+    try {
+      const {
+        title,
+        description,
+        measurementType,
+        unit,
+        startValue,
+        targetValue,
+        currentValue,
+        targetDate
+      } = req.body;
+
+      const created = goalService.create({
+        userId: req.userId,
+        priorityId: req.params.priorityId,
+        title,
+        description,
+        measurementType,
+        unit,
+        startValue,
+        targetValue,
+        currentValue,
+        targetDate
+      });
+
+      res.status(201).json({ data: created });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.get('/goals/:id', (req, res) => {
+    try {
+      const item = goalService.getById({ userId: req.userId, id: req.params.id });
+      if (!item) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+      res.json({ data: item });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.patch('/goals/:id', (req, res) => {
+    try {
+      const {
+        title,
+        description,
+        unit,
+        startValue,
+        targetValue,
+        currentValue,
+        targetDate
+      } = req.body;
+
+      const updated = goalService.update({
+        userId: req.userId,
+        id: req.params.id,
+        title,
+        description,
+        unit,
+        startValue,
+        targetValue,
+        currentValue,
+        targetDate
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({ data: updated });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.patch('/goals/:id/progress', (req, res) => {
+    try {
+      const { currentValue } = req.body;
+      const updated = goalService.updateProgress({
+        userId: req.userId,
+        id: req.params.id,
+        currentValue
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({ data: updated });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.post('/goals/:id/achieve', (req, res) => {
+    try {
+      const { note, achievedAt } = req.body;
+      const updated = goalService.achieve({
+        userId: req.userId,
+        id: req.params.id,
+        note,
+        achievedAt
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({ data: updated });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.post('/goals/:id/retire', (req, res) => {
+    try {
+      const { note } = req.body;
+      const updated = goalService.retire({
+        userId: req.userId,
+        id: req.params.id,
+        note
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({ data: updated });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.delete('/goals/:id', (req, res) => {
+    try {
+      const deleted = goalService.delete({ userId: req.userId, id: req.params.id });
+      if (!deleted) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+      res.json({ success: true, message: 'Goal deleted' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { GoalService } from './goal-service.js';
 
 export const VALID_PHASES = ['SPARK', 'FIRE', 'COOK'];
 
@@ -82,6 +83,32 @@ export class PriorityService {
     return this.getById({ userId, id });
   }
 
+  _formatPriority(row) {
+    if (!row) return null;
+    let activeGoal = null;
+    if (row.current_goal_id && row.current_goal_title) {
+      activeGoal = {
+        id: row.current_goal_id,
+        title: row.current_goal_title,
+        measurement_type: row.current_goal_measurement_type,
+        unit: row.current_goal_unit,
+        start_value: row.current_goal_start_value,
+        target_value: row.current_goal_target_value,
+        current_value: row.current_goal_current_value,
+        target_date: row.current_goal_target_date,
+        status: row.current_goal_status,
+        sequence_number: row.current_goal_sequence_number
+      };
+      activeGoal.progress_percent = GoalService.computeProgressPercent(activeGoal);
+    }
+
+    return {
+      ...row,
+      achieved_goals_count: row.achieved_goals_count || 0,
+      active_goal: activeGoal
+    };
+  }
+
   getById({ userId = 'default-user', id }) {
     const stmt = this.db.prepare(`
       SELECT 
@@ -89,15 +116,26 @@ export class PriorityService {
         p.spark_definition, p.fire_definition, p.cook_definition, p.synthesis_definition,
         p.is_active, p.created_at, p.updated_at,
         a.name AS area_name, a.life_direction_id,
-        ld.name AS life_direction_name
+        ld.name AS life_direction_name,
+        g.title AS current_goal_title,
+        g.measurement_type AS current_goal_measurement_type,
+        g.unit AS current_goal_unit,
+        g.start_value AS current_goal_start_value,
+        g.target_value AS current_goal_target_value,
+        g.current_value AS current_goal_current_value,
+        g.target_date AS current_goal_target_date,
+        g.status AS current_goal_status,
+        g.sequence_number AS current_goal_sequence_number,
+        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count
       FROM priorities p
       JOIN areas a ON a.id = p.area_id
       JOIN life_directions ld ON ld.id = a.life_direction_id
+      LEFT JOIN goals g ON g.id = p.current_goal_id
       WHERE p.id = ? AND p.user_id = ?
     `);
 
     const row = stmt.get(id, userId);
-    return row || null;
+    return this._formatPriority(row);
   }
 
   list({ userId = 'default-user', areaId, lifeDirectionId, phase, isActive } = {}) {
@@ -107,10 +145,21 @@ export class PriorityService {
         p.spark_definition, p.fire_definition, p.cook_definition, p.synthesis_definition,
         p.is_active, p.created_at, p.updated_at,
         a.name AS area_name, a.life_direction_id,
-        ld.name AS life_direction_name
+        ld.name AS life_direction_name,
+        g.title AS current_goal_title,
+        g.measurement_type AS current_goal_measurement_type,
+        g.unit AS current_goal_unit,
+        g.start_value AS current_goal_start_value,
+        g.target_value AS current_goal_target_value,
+        g.current_value AS current_goal_current_value,
+        g.target_date AS current_goal_target_date,
+        g.status AS current_goal_status,
+        g.sequence_number AS current_goal_sequence_number,
+        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count
       FROM priorities p
       JOIN areas a ON a.id = p.area_id
       JOIN life_directions ld ON ld.id = a.life_direction_id
+      LEFT JOIN goals g ON g.id = p.current_goal_id
       WHERE p.user_id = ?
     `;
     const params = [userId];
@@ -138,7 +187,8 @@ export class PriorityService {
     query += ` ORDER BY ld.sort_order ASC, a.sort_order ASC, p.created_at ASC`;
 
     const stmt = this.db.prepare(query);
-    return stmt.all(...params);
+    const rows = stmt.all(...params);
+    return rows.map(r => this._formatPriority(r));
   }
 
   listGroupedHierarchy({ userId = 'default-user', isActive = 1 } = {}) {

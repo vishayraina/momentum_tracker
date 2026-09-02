@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Project Foundation & Priority Definition Tracer Bullet
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] User can configure an active Goal for a Priority across measurement types (`COUNT`, `BOOLEAN`, `QUALITATIVE`, `MAINTENANCE`).
-- [ ] Quantitative goals store start value, current value, target value, measurement unit, and optional target date.
-- [ ] System strictly enforces the sequential goal invariant: only one active Goal per Priority at any time.
-- [ ] User can mark a Goal as `ACHIEVED` with an optional achievement note, immutably preserving the milestone timestamp.
-- [ ] User can view the sequence history of previous achieved goals for any Priority.
-- [ ] Automated integration tests verify single-active-goal enforcement, goal achievement lifecycle, and sequence transitions.
+- [x] User can configure an active Goal for a Priority across measurement types (`COUNT`, `BOOLEAN`, `QUALITATIVE`, `MAINTENANCE`).
+- [x] Quantitative goals store start value, current value, target value, measurement unit, and optional target date.
+- [x] System strictly enforces the sequential goal invariant: only one active Goal per Priority at any time.
+- [x] User can mark a Goal as `ACHIEVED` with an optional achievement note, immutably preserving the milestone timestamp.
+- [x] User can view the sequence history of previous achieved goals for any Priority.
+- [x] Automated integration tests verify single-active-goal enforcement, goal achievement lifecycle, and sequence transitions.

@@ -288,6 +288,215 @@
     </div>
   </div>
 
+  <!-- Goal Configuration Modal -->
+  <div class="modal-backdrop" id="goalModal" role="dialog" aria-modal="true" aria-labelledby="goalModalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="goalModalTitle">Set Sequential Milestone</h3>
+          <div style="font-size: 0.8rem; color: var(--primary-accent); margin-top: 0.2rem;" id="goalPriorityContext"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="goalForm">
+        <input type="hidden" id="goalPriorityId">
+        <input type="hidden" id="goalId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">
+              Measurement Type *
+              <span class="form-hint">How progress is tracked</span>
+            </label>
+            <div class="measurement-type-group">
+              <label class="measurement-type-label selected" data-type="COUNT">
+                <input type="radio" name="measurementType" value="COUNT" checked>
+                <div class="type-name">📊 Count / Metric</div>
+                <div class="type-sub">Quantitative targets (e.g., 50 passed tests, 12 chapters)</div>
+              </label>
+
+              <label class="measurement-type-label" data-type="BOOLEAN">
+                <input type="radio" name="measurementType" value="BOOLEAN">
+                <div class="type-name">✓ Boolean</div>
+                <div class="type-sub">Single binary outcome (e.g., ship MVP, deploy cluster)</div>
+              </label>
+
+              <label class="measurement-type-label" data-type="QUALITATIVE">
+                <input type="radio" name="measurementType" value="QUALITATIVE">
+                <div class="type-name">💡 Qualitative</div>
+                <div class="type-sub">Internal mastery, understanding, mental model clarity</div>
+              </label>
+
+              <label class="measurement-type-label" data-type="MAINTENANCE">
+                <input type="radio" name="measurementType" value="MAINTENANCE">
+                <div class="type-name">🔄 Maintenance</div>
+                <div class="type-sub">Ongoing baseline standard or recurring discipline</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="goalTitle">Milestone Title *</label>
+            <input type="text" id="goalTitle" class="form-input" placeholder="e.g., Pass Raft Jepsen Tests under network partitions" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="goalDesc">
+              Description / Target Intent
+              <span class="form-hint">Optional context</span>
+            </label>
+            <textarea id="goalDesc" class="form-textarea" placeholder="Specific criteria or definition of done for this milestone..."></textarea>
+          </div>
+
+          <!-- Dynamic Quantitative Metric Fields (Shown for COUNT) -->
+          <div id="goalCountFields" class="goal-count-fields">
+            <div class="grid-2-col">
+              <div class="form-group">
+                <label class="form-label" for="goalStartValue">Start Value</label>
+                <input type="number" id="goalStartValue" class="form-input" value="0" step="any">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="goalTargetValue">Target Value *</label>
+                <input type="number" id="goalTargetValue" class="form-input" value="10" step="any">
+              </div>
+            </div>
+
+            <div class="grid-2-col">
+              <div class="form-group">
+                <label class="form-label" for="goalUnit">
+                  Measurement Unit *
+                  <span class="form-hint">e.g., tests, chapters, PRs</span>
+                </label>
+                <input type="text" id="goalUnit" class="form-input" placeholder="e.g., passed runs">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="goalTargetDate">
+                  Target Date
+                  <span class="form-hint">Optional pacing target</span>
+                </label>
+                <input type="date" id="goalTargetDate" class="form-input">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveGoal">Set Active Milestone</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Achieve Milestone Modal -->
+  <div class="modal-backdrop" id="achieveGoalModal" role="dialog" aria-modal="true" aria-labelledby="achieveModalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="achieveModalTitle" style="color: #34d399;">🎉 Milestone Achieved!</h3>
+          <div style="font-size: 0.825rem; color: var(--text-secondary); margin-top: 0.2rem;" id="achieveGoalContext"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="achieveGoalForm">
+        <input type="hidden" id="achieveGoalId">
+        <div class="modal-body">
+          <div class="celebrate-card">
+            <div class="celebrate-title" id="achieveGoalTitle"></div>
+            <p class="celebrate-sub">Marking this milestone as achieved immutably records this event in your historical timeline.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="achieveGoalNote">
+              Achievement & Reflection Note
+              <span class="form-hint">Optional learnings or takeaway</span>
+            </label>
+            <textarea id="achieveGoalNote" class="form-textarea" placeholder="What key insights, breakthroughs, or lessons were extracted during this milestone?"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="achieveGoalDate">Achievement Timestamp</label>
+            <input type="datetime-local" id="achieveGoalDate" class="form-input">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            Record Achievement
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Progress Update Modal -->
+  <div class="modal-backdrop" id="progressModal" role="dialog" aria-modal="true" aria-labelledby="progressModalTitle">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="progressModalTitle">Update Milestone Progress</h3>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;" id="progressGoalContext"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <form id="progressForm">
+        <input type="hidden" id="progressGoalId">
+        <div class="modal-body">
+          <div class="progress-display-card">
+            <div class="progress-stat-header">
+              <span id="progressCurrentLabel">Current: 0</span>
+              <span id="progressTargetLabel">Target: 100</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="progressModalBar" style="width: 0%"></div>
+            </div>
+            <div style="text-align: right; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;" id="progressModalPercent">0%</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="progressInput">Set Current Value</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="number" id="progressInput" class="form-input" step="any" required style="font-family: var(--font-mono); font-size: 1.1rem;">
+              <span style="font-size: 0.85rem; color: var(--text-secondary); min-width: 60px;" id="progressUnitLabel"></span>
+            </div>
+          </div>
+
+          <div class="quick-increment-buttons">
+            <button type="button" class="btn btn-secondary btn-sm btn-quick-inc" data-inc="1">+1</button>
+            <button type="button" class="btn btn-secondary btn-sm btn-quick-inc" data-inc="5">+5</button>
+            <button type="button" class="btn btn-secondary btn-sm btn-quick-inc" data-inc="10">+10</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Progress</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Milestone Sequence History Modal -->
+  <div class="modal-backdrop" id="goalHistoryModal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+    <div class="modal" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="historyModalTitle">Milestone Sequence History</h3>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;" id="historyPriorityContext"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="milestones-history-list" id="goalHistoryContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="btnHistoryNewGoal">+ Set Next Milestone</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 

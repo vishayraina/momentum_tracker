@@ -9,7 +9,11 @@ const state = {
   searchQuery: '',
   showArchived: false,
   editingPriorityId: null,
-  inspectingPriority: null
+  inspectingPriority: null,
+  activeGoalModalPriority: null,
+  activeGoalModalGoal: null,
+  activeHistoryPriorityId: null,
+  activeHistoryPriorityName: null
 };
 
 // DOM Elements
@@ -28,11 +32,23 @@ const elements = {
   directionModal: document.getElementById('directionModal'),
   areaModal: document.getElementById('areaModal'),
   inspectorModal: document.getElementById('inspectorModal'),
+  goalModal: document.getElementById('goalModal'),
+  achieveGoalModal: document.getElementById('achieveGoalModal'),
+  progressModal: document.getElementById('progressModal'),
+  goalHistoryModal: document.getElementById('goalHistoryModal'),
 
   // Forms
   priorityForm: document.getElementById('priorityForm'),
   directionForm: document.getElementById('directionForm'),
-  areaForm: document.getElementById('areaForm')
+  areaForm: document.getElementById('areaForm'),
+  goalForm: document.getElementById('goalForm'),
+  achieveGoalForm: document.getElementById('achieveGoalForm'),
+  progressForm: document.getElementById('progressForm'),
+
+  // Goal & Milestone Elements
+  goalCountFields: document.getElementById('goalCountFields'),
+  goalMeasurementLabels: document.querySelectorAll('.measurement-type-label'),
+  goalHistoryContainer: document.getElementById('goalHistoryContainer')
 };
 
 // Notification Helper
@@ -176,7 +192,8 @@ function renderWorkspace() {
           const matchName = p.name.toLowerCase().includes(q);
           const matchDesc = (p.description || '').toLowerCase().includes(q);
           const matchArea = area.name.toLowerCase().includes(q);
-          if (!matchName && !matchDesc && !matchArea) return false;
+          const matchGoal = p.active_goal ? p.active_goal.title.toLowerCase().includes(q) : false;
+          if (!matchName && !matchDesc && !matchArea && !matchGoal) return false;
         }
         return true;
       });
@@ -251,6 +268,8 @@ function renderWorkspace() {
 // Render Individual Priority Card
 function renderPriorityCard(p) {
   const phaseLower = p.current_phase.toLowerCase();
+  const goal = p.active_goal;
+
   return `
     <div class="priority-card ${phaseLower}-phase" data-id="${p.id}">
       <div class="priority-top">
@@ -263,6 +282,61 @@ function renderPriorityCard(p) {
         </span>
       </div>
 
+      <!-- Active Sequential Milestone Box -->
+      ${goal ? `
+        <div class="priority-goal-box">
+          <div class="priority-goal-header">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span class="goal-seq-tag">#${goal.sequence_number}</span>
+              <span class="goal-type-badge ${goal.measurement_type.toLowerCase()}">${goal.measurement_type}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+              <button class="btn btn-ghost btn-sm btn-edit-goal" data-prio-id="${p.id}" data-goal-id="${goal.id}" title="Edit Milestone">✎</button>
+              <button class="btn btn-ghost btn-sm btn-retire-goal" data-goal-id="${goal.id}" title="Retire Milestone">✕</button>
+            </div>
+          </div>
+
+          <div class="goal-title-text">${escapeHtml(goal.title)}</div>
+
+          ${goal.measurement_type === 'COUNT' ? `
+            <div class="goal-progress-wrap">
+              <div class="goal-progress-bar">
+                <div class="goal-progress-fill" style="width: ${goal.progress_percent}%"></div>
+              </div>
+              <div class="goal-progress-meta">
+                <span>${goal.current_value} / ${goal.target_value} ${escapeHtml(goal.unit || '')}</span>
+                <span>${goal.progress_percent}%</span>
+              </div>
+              ${goal.target_date ? `
+                <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">
+                  Target: ${goal.target_date}
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          <div class="goal-actions-row">
+            ${goal.measurement_type === 'COUNT' ? `
+              <button class="btn btn-secondary btn-sm btn-quick-progress" data-prio-id="${p.id}" data-goal-id="${goal.id}">
+                + Progress
+              </button>
+            ` : '<span></span>'}
+
+            <button class="btn btn-primary btn-sm btn-achieve-goal" data-prio-id="${p.id}" data-goal-id="${goal.id}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+              ✓ Achieve
+            </button>
+          </div>
+        </div>
+      ` : `
+        <div class="empty-goal-prompt">
+          <span class="empty-goal-text">No active milestone in orbit</span>
+          <button class="btn btn-secondary btn-sm btn-set-goal" data-prio-id="${p.id}">
+            + Set Milestone
+          </button>
+        </div>
+      `}
+
+      <!-- Definitions Summary Chips -->
       <div class="definitions-summary" title="Click a definition to view full contract">
         <div class="def-chip spark-chip btn-inspect-def" data-id="${p.id}" data-type="spark">Spark</div>
         <div class="def-chip fire-chip btn-inspect-def" data-id="${p.id}" data-type="fire">Fire</div>
@@ -270,10 +344,11 @@ function renderPriorityCard(p) {
         <div class="def-chip synthesis-chip btn-inspect-def" data-id="${p.id}" data-type="synthesis">Synthesis</div>
       </div>
 
+      <!-- Card Footer -->
       <div class="priority-footer">
-        <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim);">
-          ${p.is_active ? 'Active Moon' : 'Archived'}
-        </span>
+        <button class="btn btn-ghost btn-sm btn-view-milestones" data-prio-id="${p.id}" data-prio-name="${escapeHtml(p.name)}" title="View sequential milestone history">
+          🏆 Milestones (${p.achieved_goals_count || 0})
+        </button>
         <div class="priority-actions">
           <button class="btn btn-ghost btn-sm btn-inspect" data-id="${p.id}" title="View Operating Definitions">Definitions</button>
           <button class="btn btn-ghost btn-sm btn-edit-priority" data-id="${p.id}" title="Edit Priority">✎</button>
@@ -398,6 +473,87 @@ function attachWorkspaceListeners() {
       }
     });
   });
+
+  // --- Goal Action Listeners ---
+
+  // Set Milestone Button
+  document.querySelectorAll('.btn-set-goal').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const priority = await api.getPriority(btn.dataset.prioId);
+        openGoalModal(priority);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Edit Goal Button
+  document.querySelectorAll('.btn-edit-goal').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const [priority, goal] = await Promise.all([
+          api.getPriority(btn.dataset.prioId),
+          api.getGoal(btn.dataset.goalId)
+        ]);
+        openGoalModal(priority, goal);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Quick Progress Button
+  document.querySelectorAll('.btn-quick-progress').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const [priority, goal] = await Promise.all([
+          api.getPriority(btn.dataset.prioId),
+          api.getGoal(btn.dataset.goalId)
+        ]);
+        openProgressModal(goal, priority.name);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Achieve Goal Button
+  document.querySelectorAll('.btn-achieve-goal').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const [priority, goal] = await Promise.all([
+          api.getPriority(btn.dataset.prioId),
+          api.getGoal(btn.dataset.goalId)
+        ]);
+        openAchieveGoalModal(goal, priority.name);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Retire Goal Button
+  document.querySelectorAll('.btn-retire-goal').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (confirm('Retire this active milestone? You can configure a new sequential milestone.')) {
+        try {
+          await api.retireGoal(btn.dataset.goalId, { note: 'Retired by user' });
+          showToast('Milestone retired');
+          await loadData();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }
+    });
+  });
+
+  // View Milestone History Button
+  document.querySelectorAll('.btn-view-milestones').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openGoalHistoryModal(btn.dataset.prioId, btn.dataset.prioName);
+    });
+  });
 }
 
 // Modal Handlers
@@ -499,6 +655,161 @@ function openInspectorModal(priority, highlightType = null) {
   openModal(elements.inspectorModal);
 }
 
+// --- Goal Modal Controllers ---
+
+function updateMeasurementTypeStyles() {
+  const selectedType = elements.goalForm.querySelector('input[name="measurementType"]:checked')?.value || 'COUNT';
+  elements.goalMeasurementLabels.forEach(lbl => {
+    const radio = lbl.querySelector('input[type="radio"]');
+    if (radio && radio.checked) {
+      lbl.classList.add('selected');
+    } else {
+      lbl.classList.remove('selected');
+    }
+  });
+
+  if (selectedType === 'COUNT') {
+    elements.goalCountFields.style.display = 'flex';
+    document.getElementById('goalUnit').required = true;
+  } else {
+    elements.goalCountFields.style.display = 'none';
+    document.getElementById('goalUnit').required = false;
+  }
+}
+
+function openGoalModal(priority, goal = null) {
+  state.activeGoalModalPriority = priority;
+  state.activeGoalModalGoal = goal;
+
+  const form = elements.goalForm;
+  form.reset();
+
+  document.getElementById('goalPriorityId').value = priority.id;
+  document.getElementById('goalPriorityContext').textContent = `${priority.name} (Phase: ${priority.current_phase})`;
+  document.getElementById('goalModalTitle').textContent = goal ? 'Edit Sequential Milestone' : 'Set Sequential Milestone';
+  document.getElementById('goalId').value = goal ? goal.id : '';
+
+  if (goal) {
+    document.getElementById('goalTitle').value = goal.title;
+    document.getElementById('goalDesc').value = goal.description || '';
+
+    const radio = form.querySelector(`input[name="measurementType"][value="${goal.measurement_type}"]`);
+    if (radio) radio.checked = true;
+
+    document.getElementById('goalStartValue').value = goal.start_value;
+    document.getElementById('goalTargetValue').value = goal.target_value;
+    document.getElementById('goalUnit').value = goal.unit || '';
+    document.getElementById('goalTargetDate').value = goal.target_date || '';
+  } else {
+    const defaultRadio = form.querySelector('input[name="measurementType"][value="COUNT"]');
+    if (defaultRadio) defaultRadio.checked = true;
+    document.getElementById('goalStartValue').value = 0;
+    document.getElementById('goalTargetValue').value = 10;
+    document.getElementById('goalUnit').value = '';
+    document.getElementById('goalTargetDate').value = '';
+  }
+
+  updateMeasurementTypeStyles();
+  openModal(elements.goalModal);
+}
+
+function openAchieveGoalModal(goal, priorityName) {
+  state.activeGoalModalGoal = goal;
+  const form = elements.achieveGoalForm;
+  form.reset();
+
+  document.getElementById('achieveGoalId').value = goal.id;
+  document.getElementById('achieveGoalContext').textContent = priorityName;
+  document.getElementById('achieveGoalTitle').textContent = goal.title;
+
+  // Set datetime-local default to now
+  const now = new Date();
+  const localIso = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  document.getElementById('achieveGoalDate').value = localIso;
+
+  openModal(elements.achieveGoalModal);
+}
+
+function openProgressModal(goal, priorityName) {
+  state.activeGoalModalGoal = goal;
+  const form = elements.progressForm;
+  form.reset();
+
+  document.getElementById('progressGoalId').value = goal.id;
+  document.getElementById('progressGoalContext').textContent = `${priorityName} > ${goal.title}`;
+  document.getElementById('progressCurrentLabel').textContent = `Current: ${goal.current_value}`;
+  document.getElementById('progressTargetLabel').textContent = `Target: ${goal.target_value} ${goal.unit || ''}`;
+  document.getElementById('progressModalBar').style.width = `${goal.progress_percent}%`;
+  document.getElementById('progressModalPercent').textContent = `${goal.progress_percent}%`;
+
+  document.getElementById('progressInput').value = goal.current_value;
+  document.getElementById('progressUnitLabel').textContent = goal.unit || '';
+
+  openModal(elements.progressModal);
+}
+
+async function openGoalHistoryModal(priorityId, priorityName) {
+  state.activeHistoryPriorityId = priorityId;
+  state.activeHistoryPriorityName = priorityName;
+
+  document.getElementById('historyPriorityContext').textContent = priorityName;
+  const container = elements.goalHistoryContainer;
+  container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">Loading milestone sequence...</div>';
+  openModal(elements.goalHistoryModal);
+
+  try {
+    const goals = await api.getGoals(priorityId);
+    if (!goals || goals.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-secondary); border: 1px dashed var(--border-subtle); border-radius: var(--radius-lg);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🎯</div>
+          <div>No milestones recorded for this priority yet.</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = goals.map(g => {
+      const statusLower = g.status.toLowerCase();
+      const achievedDateStr = g.achieved_at ? new Date(g.achieved_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+      const createdDateStr = new Date(g.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+      return `
+        <div class="history-milestone-card ${statusLower}">
+          <div class="history-card-top">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="goal-seq-tag">#${g.sequence_number}</span>
+              <span class="goal-type-badge ${g.measurement_type.toLowerCase()}">${g.measurement_type}</span>
+              <h4 class="history-title">${escapeHtml(g.title)}</h4>
+            </div>
+            <span class="history-status-badge ${statusLower}">${g.status}</span>
+          </div>
+
+          ${g.description ? `
+            <div style="font-size: 0.825rem; color: var(--text-secondary);">${escapeHtml(g.description)}</div>
+          ` : ''}
+
+          <div class="history-meta-row">
+            ${g.measurement_type === 'COUNT' ? `
+              <span>Progress: ${g.current_value} / ${g.target_value} ${escapeHtml(g.unit || '')} (${g.progress_percent}%)</span>
+            ` : ''}
+            <span>Created: ${createdDateStr}</span>
+            ${achievedDateStr ? `<span>Achieved: ${achievedDateStr}</span>` : ''}
+          </div>
+
+          ${g.achievement_note ? `
+            <div class="history-note-box">
+              "${escapeHtml(g.achievement_note)}"
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="color: #f43f5e; padding: 1rem 0;">Failed to load milestones: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
 // Setup Global Event Listeners
 function setupEvents() {
   // Modal Close buttons
@@ -537,12 +848,41 @@ function setupEvents() {
     renderWorkspace();
   });
 
-  // Phase Radio change in form
+  // Phase Radio change in priority form
   elements.priorityForm.querySelectorAll('input[name="currentPhase"]').forEach(radio => {
     radio.addEventListener('change', updatePhaseRadioStyles);
   });
 
-  // Form Submissions
+  // Goal Measurement Type Radio change
+  elements.goalForm.querySelectorAll('input[name="measurementType"]').forEach(radio => {
+    radio.addEventListener('change', updateMeasurementTypeStyles);
+  });
+
+  // Quick Increment Buttons in Progress Modal
+  document.querySelectorAll('.btn-quick-inc').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inc = Number(btn.dataset.inc);
+      const input = document.getElementById('progressInput');
+      const current = Number(input.value) || 0;
+      input.value = current + inc;
+    });
+  });
+
+  // History Modal: Set Next Milestone Button
+  document.getElementById('btnHistoryNewGoal')?.addEventListener('click', async () => {
+    if (state.activeHistoryPriorityId) {
+      closeModal(elements.goalHistoryModal);
+      try {
+        const priority = await api.getPriority(state.activeHistoryPriorityId);
+        openGoalModal(priority);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  });
+
+  // --- Form Submissions ---
+
   // 1. Direction Form
   elements.directionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -631,6 +971,99 @@ function setupEvents() {
         showToast('Priority moon added to orbit');
       }
       closeModal(elements.priorityModal);
+      await loadData();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // 4. Goal Form
+  elements.goalForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const priorityId = document.getElementById('goalPriorityId').value;
+    const goalId = document.getElementById('goalId').value;
+    const title = document.getElementById('goalTitle').value.trim();
+    const description = document.getElementById('goalDesc').value.trim();
+    const measurementType = elements.goalForm.querySelector('input[name="measurementType"]:checked')?.value || 'COUNT';
+    const startValue = parseFloat(document.getElementById('goalStartValue').value) || 0;
+    const targetValue = parseFloat(document.getElementById('goalTargetValue').value) || 1;
+    const unit = document.getElementById('goalUnit').value.trim();
+    const targetDate = document.getElementById('goalTargetDate').value || null;
+
+    if (!title) {
+      showToast('Milestone title is required', 'error');
+      return;
+    }
+
+    if (measurementType === 'COUNT') {
+      if (startValue >= targetValue) {
+        showToast('Target value must be greater than start value', 'error');
+        return;
+      }
+      if (!unit) {
+        showToast('Measurement unit is required for count metrics', 'error');
+        return;
+      }
+    }
+
+    const payload = {
+      title,
+      description,
+      measurementType,
+      startValue,
+      targetValue,
+      unit,
+      targetDate
+    };
+
+    try {
+      if (goalId) {
+        await api.updateGoal(goalId, payload);
+        showToast('Milestone updated');
+      } else {
+        await api.createGoal(priorityId, payload);
+        showToast('Sequential milestone attached to orbit');
+      }
+      closeModal(elements.goalModal);
+      await loadData();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // 5. Achieve Goal Form
+  elements.achieveGoalForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const goalId = document.getElementById('achieveGoalId').value;
+    const note = document.getElementById('achieveGoalNote').value.trim();
+    const dateVal = document.getElementById('achieveGoalDate').value;
+    const achievedAt = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+
+    try {
+      await api.achieveGoal(goalId, { note, achievedAt });
+      showToast('Milestone Achieved! Recorded in historical event log.');
+      closeModal(elements.achieveGoalModal);
+      await loadData();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // 6. Progress Quick Update Form
+  elements.progressForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const goalId = document.getElementById('progressGoalId').value;
+    const currentValue = parseFloat(document.getElementById('progressInput').value);
+
+    if (isNaN(currentValue)) {
+      showToast('Please enter a valid numeric progress value', 'error');
+      return;
+    }
+
+    try {
+      await api.updateGoalProgress(goalId, currentValue);
+      showToast('Progress updated');
+      closeModal(elements.progressModal);
       await loadData();
     } catch (err) {
       showToast(err.message, 'error');
