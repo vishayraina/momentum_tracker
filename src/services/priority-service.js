@@ -1,11 +1,13 @@
 import crypto from 'crypto';
 import { GoalService } from './goal-service.js';
+import { PhaseTransitionService, VALID_PHASES } from './phase-transition-service.js';
 
-export const VALID_PHASES = ['SPARK', 'FIRE', 'COOK'];
+export { VALID_PHASES };
 
 export class PriorityService {
   constructor(db) {
     this.db = db;
+    this.phaseTransitionService = new PhaseTransitionService(db);
   }
 
   create({
@@ -102,8 +104,22 @@ export class PriorityService {
       activeGoal.progress_percent = GoalService.computeProgressPercent(activeGoal);
     }
 
+    const currentPhaseStartTime = row.latest_transition_timestamp || row.created_at;
+    let daysInCurrentPhase = 0;
+    let currentPhaseDurationText = '';
+    if (currentPhaseStartTime) {
+      const currentPhaseStartMs = new Date(currentPhaseStartTime).getTime();
+      const nowMs = Date.now();
+      daysInCurrentPhase = Math.max(0, Math.floor((nowMs - currentPhaseStartMs) / (1000 * 60 * 60 * 24)));
+      const phaseFormatted = row.current_phase ? (row.current_phase.charAt(0).toUpperCase() + row.current_phase.slice(1).toLowerCase()) : '';
+      currentPhaseDurationText = `${phaseFormatted} for ${daysInCurrentPhase} day${daysInCurrentPhase === 1 ? '' : 's'}`;
+    }
+
     return {
       ...row,
+      days_in_current_phase: daysInCurrentPhase,
+      current_phase_duration_text: currentPhaseDurationText,
+      current_phase_started_at: currentPhaseStartTime,
       achieved_goals_count: row.achieved_goals_count || 0,
       active_goal: activeGoal
     };
@@ -126,7 +142,8 @@ export class PriorityService {
         g.target_date AS current_goal_target_date,
         g.status AS current_goal_status,
         g.sequence_number AS current_goal_sequence_number,
-        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count
+        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count,
+        (SELECT pt.timestamp FROM phase_transitions pt WHERE pt.priority_id = p.id ORDER BY pt.timestamp DESC, pt.created_at DESC LIMIT 1) AS latest_transition_timestamp
       FROM priorities p
       JOIN areas a ON a.id = p.area_id
       JOIN life_directions ld ON ld.id = a.life_direction_id
@@ -155,7 +172,8 @@ export class PriorityService {
         g.target_date AS current_goal_target_date,
         g.status AS current_goal_status,
         g.sequence_number AS current_goal_sequence_number,
-        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count
+        (SELECT COUNT(*) FROM goals WHERE priority_id = p.id AND status = 'ACHIEVED') AS achieved_goals_count,
+        (SELECT pt.timestamp FROM phase_transitions pt WHERE pt.priority_id = p.id ORDER BY pt.timestamp DESC, pt.created_at DESC LIMIT 1) AS latest_transition_timestamp
       FROM priorities p
       JOIN areas a ON a.id = p.area_id
       JOIN life_directions ld ON ld.id = a.life_direction_id
@@ -324,6 +342,25 @@ export class PriorityService {
       id,
       userId
     );
+
+    if (updatedPhase !== existing.current_phase) {
+      const insertPtStmt = this.db.prepare(`
+        INSERT INTO phase_transitions (
+          id, user_id, priority_id, from_phase, to_phase, timestamp, note, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertPtStmt.run(
+        crypto.randomUUID(),
+        userId,
+        id,
+        existing.current_phase,
+        updatedPhase,
+        now,
+        'Phase updated via priority edit',
+        now
+      );
+    }
 
     return this.getById({ userId, id });
   }

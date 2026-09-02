@@ -3,6 +3,7 @@ import { LifeDirectionService } from '../services/life-direction-service.js';
 import { AreaService } from '../services/area-service.js';
 import { PriorityService } from '../services/priority-service.js';
 import { GoalService } from '../services/goal-service.js';
+import { PhaseTransitionService } from '../services/phase-transition-service.js';
 import { createEventRouter } from './event-routes.js';
 
 export function createApiRouter(db) {
@@ -11,6 +12,7 @@ export function createApiRouter(db) {
   const areaService = new AreaService(db);
   const priorityService = new PriorityService(db);
   const goalService = new GoalService(db);
+  const phaseTransitionService = new PhaseTransitionService(db);
 
   // Middleware to attach userId (supports header or default)
   router.use((req, res, next) => {
@@ -282,6 +284,54 @@ export function createApiRouter(db) {
       res.json({ success: true, message: 'Priority deleted' });
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Phase Transitions & State History ---
+
+  router.post('/priorities/:id/phase-transitions', (req, res) => {
+    try {
+      const { toPhase, to_phase, note, timestamp, occurredAt } = req.body || {};
+      const targetPhase = toPhase || to_phase;
+      const effectiveTime = timestamp || occurredAt;
+      const result = phaseTransitionService.transition({
+        userId: req.userId,
+        priorityId: req.params.id,
+        toPhase: targetPhase,
+        note,
+        timestamp: effectiveTime
+      });
+      res.status(201).json({ data: result.transition, priority: result.priority });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.get('/priorities/:id/phase-transitions', (req, res) => {
+    try {
+      const { sort = 'desc' } = req.query;
+      const items = phaseTransitionService.listByPriorityId({
+        userId: req.userId,
+        priorityId: req.params.id,
+        sort
+      });
+      res.json({ data: items });
+    } catch (err) {
+      res.status(err.message.includes('not found') ? 404 : 400).json({ error: err.message });
+    }
+  });
+
+  router.get('/priorities/:id/phase-history', (req, res) => {
+    try {
+      const { asOf } = req.query;
+      const details = phaseTransitionService.getPhaseDetails({
+        userId: req.userId,
+        priorityId: req.params.id,
+        asOf: asOf ? new Date(asOf) : new Date()
+      });
+      res.json({ data: details });
+    } catch (err) {
+      res.status(err.message.includes('not found') ? 404 : 400).json({ error: err.message });
     }
   });
 

@@ -142,6 +142,33 @@ export const api = {
     return json;
   },
 
+  // Phase Transitions & State History
+  async transitionPriorityPhase(priorityId, payload) {
+    const res = await fetch(`${API_BASE}/priorities/${priorityId}/phase-transitions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to transition priority phase');
+    return json;
+  },
+
+  async getPriorityPhaseTransitions(priorityId, sort = 'desc') {
+    const res = await fetch(`${API_BASE}/priorities/${priorityId}/phase-transitions?sort=${sort}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch phase transitions');
+    return json.data;
+  },
+
+  async getPriorityPhaseHistory(priorityId, asOf = null) {
+    const url = asOf ? `${API_BASE}/priorities/${priorityId}/phase-history?asOf=${encodeURIComponent(asOf)}` : `${API_BASE}/priorities/${priorityId}/phase-history`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch phase history');
+    return json.data;
+  },
+
   // Goals & Milestones
   async getGoals(priorityId, status = null) {
     const url = status ? `${API_BASE}/priorities/${priorityId}/goals?status=${status}` : `${API_BASE}/priorities/${priorityId}/goals`;

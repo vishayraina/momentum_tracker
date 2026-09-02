@@ -99,6 +99,12 @@ const elements = {
   logNoteInput: document.getElementById('logNote'),
   logOccurredAtInput: document.getElementById('logOccurredAt'),
 
+  // Phase Transition Elements
+  phaseTransitionModal: document.getElementById('phaseTransitionModal'),
+  phaseTransitionForm: document.getElementById('phaseTransitionForm'),
+  transitionPhaseRadioGroup: document.getElementById('transitionPhaseRadioGroup'),
+  btnInspectorChangePhase: document.getElementById('btnInspectorChangePhase'),
+
   // Timeline Elements
   timelineStreamContainer: document.getElementById('timelineStreamContainer'),
   timelineFilterChips: document.querySelectorAll('#timelineFilterChips .filter-chip')
@@ -331,9 +337,12 @@ function renderPriorityCard(p) {
           <h4 class="priority-name">${escapeHtml(p.name)}</h4>
           ${p.description ? `<p class="priority-desc">${escapeHtml(p.description)}</p>` : ''}
         </div>
-        <span class="phase-pill ${phaseLower}">
-          ● ${p.current_phase}
-        </span>
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <span class="phase-pill ${phaseLower} phase-pill-clickable btn-card-phase-pill" data-id="${p.id}" title="${escapeHtml(p.current_phase_duration_text || p.current_phase)} · Click to change operating mode">
+            ● ${p.current_phase} · ${p.days_in_current_phase || 0}d
+          </span>
+          <button class="btn btn-ghost btn-sm btn-card-phase-switch" data-id="${p.id}" title="Transition operating mode">⇄</button>
+        </div>
       </div>
 
       <!-- Active Sequential Milestone Box -->
@@ -482,7 +491,20 @@ function attachWorkspaceListeners() {
     });
   });
 
-  // Inspect Definitions Button
+  // Phase Pill & Switch Buttons
+  document.querySelectorAll('.btn-card-phase-pill, .btn-card-phase-switch').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        const priority = await api.getPriority(btn.dataset.id);
+        openPhaseTransitionModal(priority);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Inspect Definitions & Detail Button
   document.querySelectorAll('.btn-inspect, .btn-inspect-def').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -719,18 +741,200 @@ function updatePhaseRadioStyles() {
   });
 }
 
-// Inspector Modal
-function openInspectorModal(priority, highlightType = null) {
+// --- Priority Detail & Inspector Modal Controllers ---
+
+async function openInspectorModal(priority, initialTab = 'definitions') {
   state.inspectingPriority = priority;
-  document.getElementById('inspectorTitle').textContent = `${priority.name} - Operating Definitions`;
-  document.getElementById('inspectorSubtitle').textContent = `${priority.life_direction_name} > ${priority.area_name} (Current: ${priority.current_phase})`;
+  document.getElementById('inspectorTitle').textContent = `${priority.name} - Priority Detail`;
+  document.getElementById('inspectorSubtitle').textContent = `${priority.life_direction_name} > ${priority.area_name} (Current: ${priority.current_phase_duration_text || priority.current_phase})`;
 
   document.getElementById('inspectorSpark').textContent = priority.spark_definition;
   document.getElementById('inspectorFire').textContent = priority.fire_definition;
   document.getElementById('inspectorCook').textContent = priority.cook_definition;
   document.getElementById('inspectorSynthesis').textContent = priority.synthesis_definition;
 
+  switchDetailTab(initialTab);
   openModal(elements.inspectorModal);
+
+  // Load phase history & tenure metrics asynchronously
+  await refreshPriorityPhaseHistory(priority.id);
+}
+
+function switchDetailTab(tabKey) {
+  document.querySelectorAll('.detail-tab-btn').forEach(btn => {
+    if (btn.dataset.tab === tabKey) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+
+  const tabDefs = document.getElementById('tabContentDefinitions');
+  const tabHist = document.getElementById('tabContentPhaseHistory');
+  if (tabKey === 'phase-history') {
+    tabDefs?.classList.remove('active');
+    tabHist?.classList.add('active');
+  } else {
+    tabDefs?.classList.add('active');
+    tabHist?.classList.remove('active');
+  }
+}
+
+async function refreshPriorityPhaseHistory(priorityId) {
+  const container = document.getElementById('phaseHistoryStream');
+  if (!container) return;
+
+  container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; padding: 1.5rem 0; text-align: center;">Loading state history & duration metrics...</div>';
+
+  try {
+    const details = await api.getPriorityPhaseHistory(priorityId);
+
+    // Summary cards
+    const currentVal = document.getElementById('detailCurrentPhaseVal');
+    const currentSub = document.getElementById('detailCurrentPhaseSub');
+    if (currentVal) currentVal.textContent = `${details.current_phase} · ${details.days_in_current_phase}d`;
+    if (currentSub) {
+      const startedStr = details.current_phase_started_at ? new Date(details.current_phase_started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'creation';
+      currentSub.textContent = `${details.current_phase_duration_text} (since ${startedStr})`;
+    }
+
+    const sparkDays = document.getElementById('cumulSparkDays');
+    const fireDays = document.getElementById('cumulFireDays');
+    const cookDays = document.getElementById('cumulCookDays');
+    if (sparkDays) sparkDays.textContent = `Spark: ${details.total_days_by_phase?.SPARK || 0}d`;
+    if (fireDays) fireDays.textContent = `Fire: ${details.total_days_by_phase?.FIRE || 0}d`;
+    if (cookDays) cookDays.textContent = `Cook: ${details.total_days_by_phase?.COOK || 0}d`;
+
+    const countEl = document.getElementById('detailTransitionCount');
+    if (countEl) countEl.textContent = `${details.transitions_count || 0} transition${details.transitions_count === 1 ? '' : 's'}`;
+
+    if (!details.history || details.history.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-secondary); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.35rem;">⏳</div>
+          <div style="font-weight: 500; font-size: 0.85rem;">No phase transitions recorded yet.</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Operating in initial <strong>${escapeHtml(details.current_phase)}</strong> mode since inception (${details.days_in_current_phase} days).
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;" id="btnDetailFirstTransition">
+            ⇄ Transition Phase
+          </button>
+        </div>
+      `;
+      document.getElementById('btnDetailFirstTransition')?.addEventListener('click', () => {
+        closeModal(elements.inspectorModal);
+        const p = state.priorities.find(item => item.id === priorityId) || state.inspectingPriority;
+        if (p) openPhaseTransitionModal(p);
+      });
+      return;
+    }
+
+    container.innerHTML = details.history.map(tr => {
+      const dateStr = new Date(tr.timestamp).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const relativeTime = formatRelativeTime(tr.timestamp);
+      const fromLower = tr.from_phase.toLowerCase();
+      const toLower = tr.to_phase.toLowerCase();
+
+      return `
+        <div class="phase-history-item">
+          <div class="phase-history-header">
+            <div class="phase-transition-flow">
+              <span class="phase-pill ${fromLower}" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">● ${tr.from_phase}</span>
+              <span class="phase-arrow">➔</span>
+              <span class="phase-pill ${toLower}" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">● ${tr.to_phase}</span>
+            </div>
+            <span class="phase-history-time" title="${escapeHtml(tr.timestamp)}">${dateStr} (${relativeTime})</span>
+          </div>
+
+          <div class="phase-history-tenure">
+            Prior phase tenure: <strong>${escapeHtml(tr.prior_phase_duration_text)}</strong>
+          </div>
+
+          ${tr.note ? `
+            <div class="phase-history-note">${escapeHtml(tr.note)}</div>
+          ` : `
+            <div style="font-size: 0.75rem; color: var(--text-dim); font-style: italic;">No reason note attached</div>
+          `}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="color: #f43f5e; padding: 1rem 0; font-size: 0.85rem;">Failed to load history: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// --- Phase Transition Modal Controllers ---
+
+function openPhaseTransitionModal(priority, defaultTarget = null) {
+  state.activeTransitionPriority = priority;
+
+  document.getElementById('transitionPriorityId').value = priority.id;
+  document.getElementById('phaseTransitionTitle').textContent = `Transition Operating Phase · ${priority.name}`;
+
+  const currentPill = document.getElementById('transitionCurrentPill');
+  const currentTenure = document.getElementById('transitionCurrentTenure');
+  const currentPhaseLower = priority.current_phase.toLowerCase();
+
+  if (currentPill) {
+    currentPill.className = `phase-pill ${currentPhaseLower}`;
+    currentPill.textContent = `● ${priority.current_phase}`;
+  }
+  if (currentTenure) {
+    currentTenure.textContent = `(${priority.current_phase_duration_text || priority.current_phase})`;
+  }
+
+  // Pre-select next logical phase or requested phase
+  let targetPhase = defaultTarget;
+  if (!targetPhase) {
+    if (priority.current_phase === 'SPARK') targetPhase = 'FIRE';
+    else if (priority.current_phase === 'FIRE') targetPhase = 'COOK';
+    else targetPhase = 'SPARK';
+  }
+
+  const radioInputs = elements.phaseTransitionForm.querySelectorAll('input[name="targetPhase"]');
+  radioInputs.forEach(r => {
+    r.checked = (r.value === targetPhase);
+  });
+
+  updateTransitionPhaseStyles();
+  updateTransitionDefinitionPreview(targetPhase);
+
+  document.getElementById('transitionNote').value = '';
+  document.getElementById('transitionTimestamp').value = '';
+
+  openModal(elements.phaseTransitionModal);
+}
+
+function updateTransitionPhaseStyles() {
+  const labels = elements.phaseTransitionForm.querySelectorAll('.phase-radio-label');
+  labels.forEach(lbl => {
+    const radio = lbl.querySelector('input[type="radio"]');
+    if (radio && radio.checked) {
+      lbl.classList.add('selected');
+    } else {
+      lbl.classList.remove('selected');
+    }
+  });
+}
+
+function updateTransitionDefinitionPreview(phase) {
+  const priority = state.activeTransitionPriority;
+  if (!priority) return;
+
+  const header = document.getElementById('previewPhaseHeader');
+  const text = document.getElementById('previewPhaseText');
+  if (!header || !text) return;
+
+  let def = '';
+  if (phase === 'SPARK') def = priority.spark_definition;
+  else if (phase === 'FIRE') def = priority.fire_definition;
+  else if (phase === 'COOK') def = priority.cook_definition;
+
+  header.textContent = `${phase} Definition for ${priority.name}:`;
+  text.textContent = def || '(No specific operating definition defined)';
 }
 
 // --- Goal Modal Controllers ---
@@ -1521,6 +1725,74 @@ function setupEvents() {
       });
       renderTimelineStream();
     });
+  });
+
+  // Inspector Tabs
+  document.querySelectorAll('.detail-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchDetailTab(btn.dataset.tab);
+    });
+  });
+
+  // Inspector "⇄ Change Phase" Button
+  elements.btnInspectorChangePhase?.addEventListener('click', () => {
+    if (state.inspectingPriority) {
+      closeModal(elements.inspectorModal);
+      openPhaseTransitionModal(state.inspectingPriority);
+    }
+  });
+
+  // Phase Transition Target Radio Change
+  elements.phaseTransitionForm?.querySelectorAll('input[name="targetPhase"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateTransitionPhaseStyles();
+      updateTransitionDefinitionPreview(radio.value);
+    });
+  });
+
+  // Submit Phase Transition Form
+  elements.phaseTransitionForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const priority = state.activeTransitionPriority;
+    if (!priority) return;
+
+    const selectedRadio = elements.phaseTransitionForm.querySelector('input[name="targetPhase"]:checked');
+    if (!selectedRadio) {
+      showToast('Please select a target operating mode', 'error');
+      return;
+    }
+
+    const toPhase = selectedRadio.value;
+    const note = document.getElementById('transitionNote').value.trim() || null;
+    const customTime = document.getElementById('transitionTimestamp').value;
+
+    const submitBtn = document.getElementById('btnConfirmTransition');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Transitioning...';
+
+    try {
+      const payload = { toPhase };
+      if (note) payload.note = note;
+      if (customTime) payload.timestamp = new Date(customTime).toISOString();
+
+      await api.transitionPriorityPhase(priority.id, payload);
+      showToast(`Priority entered ${toPhase} mode!`);
+      closeModal(elements.phaseTransitionModal);
+
+      await loadData();
+
+      // If inspector modal was open, refresh with updated priority
+      if (state.inspectingPriority && state.inspectingPriority.id === priority.id) {
+        const updated = state.priorities.find(p => p.id === priority.id);
+        if (updated) openInspectorModal(updated, 'phase-history');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
   });
 
   // Global Keyboard Shortcut: Press 'L' to quickly log progress

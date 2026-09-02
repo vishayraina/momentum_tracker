@@ -73,11 +73,12 @@ export function createEventRouter(dbOrService) {
 
   router.get('/priorities/:priorityId/events', (req, res) => {
     try {
-      const { includeVoided } = req.query;
+      const { includeVoided, includeTransitions } = req.query;
       const timeline = eventService.getPriorityTimeline({
         userId: req.userId,
         priorityId: req.params.priorityId,
-        includeVoided: includeVoided !== undefined ? includeVoided === 'true' || includeVoided === '1' : true
+        includeVoided: includeVoided !== undefined ? includeVoided === 'true' || includeVoided === '1' : true,
+        includeTransitions: includeTransitions !== undefined ? includeTransitions === 'true' || includeTransitions === '1' : false
       });
       res.json({ data: timeline });
     } catch (err) {

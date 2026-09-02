@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Project Foundation & Priority Definition Tracer Bullet
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] User can change Priority phase freely via UI selector (`SPARK`, `FIRE`, `COOK`) with an optional note.
-- [ ] Transition creates an immutable `PhaseTransition` record storing `from_phase`, `to_phase`, `timestamp`, and `note`.
-- [ ] Priority detail view displays current phase, days in current phase, and past phase transition history.
-- [ ] Phase transitions are independent of goal completions and do not mutate raw progress event records.
-- [ ] Automated integration tests verify unrestricted phase transitions, phase duration calculations, and state timeline queries.
+- [x] User can change Priority phase freely via UI selector (`SPARK`, `FIRE`, `COOK`) with an optional note.
+- [x] Transition creates an immutable `PhaseTransition` record storing `from_phase`, `to_phase`, `timestamp`, and `note`.
+- [x] Priority detail view displays current phase, days in current phase, and past phase transition history.
+- [x] Phase transitions are independent of goal completions and do not mutate raw progress event records.
+- [x] Automated integration tests verify unrestricted phase transitions, phase duration calculations, and state timeline queries.

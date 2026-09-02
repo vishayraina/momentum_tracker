@@ -235,7 +235,7 @@ export class EventService {
   /**
    * Fetch chronological timeline and active metric aggregations for a Priority
    */
-  getPriorityTimeline({ userId = 'default-user', priorityId, includeVoided = true }) {
+  getPriorityTimeline({ userId = 'default-user', priorityId, includeVoided = true, includeTransitions = false }) {
     const checkPriorityStmt = this.db.prepare(`
       SELECT 
         p.id, p.name, p.current_phase, p.current_goal_id,
@@ -291,10 +291,30 @@ export class EventService {
       synthesis: rawCounts.synthesis_count || 0
     };
 
-    return {
+    const result = {
       priority,
       events,
       counts
     };
+
+    if (includeTransitions) {
+      const ptStmt = this.db.prepare(`
+        SELECT 
+          id, user_id, priority_id, from_phase, to_phase,
+          timestamp AS occurred_at, timestamp, note, created_at,
+          'PHASE_TRANSITION' AS event_type,
+          'ACTIVE' AS status
+        FROM phase_transitions
+        WHERE priority_id = ? AND user_id = ?
+        ORDER BY timestamp DESC
+      `);
+      result.phase_transitions = ptStmt.all(priorityId, userId).map(pt => ({
+        ...pt,
+        priority_name: priority.name,
+        is_phase_transition: true
+      }));
+    }
+
+    return result;
   }
 }
