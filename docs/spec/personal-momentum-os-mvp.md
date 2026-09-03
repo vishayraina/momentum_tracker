@@ -58,7 +58,7 @@ Key solution principles:
 18. As a user, I want to record a "Spark" event by selecting a Priority and adding an optional note, so that I log baseline maintenance without friction.
 19. As a user, I want to record a "Fire" event against a Priority, so that deliberate energy surges are explicitly captured in my history.
 20. As a user, I want to record a "Cook Session" event against a Priority, so that my sustained deep-work sessions are logged and counted.
-21. As a user, I want to record a "Synthesis" event with rich long-form reflection text, so that I can document what I learned and synthesized from my work.
+21. As a user, I want to record a "Synthesis" event with an observational note, so that I can capture what I learned and synthesized from my work directly in the rapid progress log.
 22. As a user, I want to record a "Serve" event, so that durable external outputs (articles, frameworks, shared artifacts) are anchored to the Priority timeline.
 23. As a user, I want progress events to default to the current timestamp while allowing backdated timestamps, so that I can accurately log activities that happened earlier.
 24. As a user, I want to void an incorrectly logged event rather than deleting historical audit trails, so that metric integrity is preserved.
@@ -88,7 +88,7 @@ Key solution principles:
 ### 7. Priority Deep-Dive View
 41. As a user, I want a dedicated detail view for each Priority showing its area, phase, current goal, definitions, and aggregate activity counts, so that I have complete context in one place.
 42. As a user, I want to see a unified timeline of all events (Sparks, Fires, Cook Sessions, Syntheses, Serves, Phase Transitions, Goal Achievements) for a Priority, so that the entire historical narrative is visible.
-43. As a user, I want to view and read full Synthesis entries linked to the Priority, so that my captured insights are easily retrievable.
+43. As a user, I want to view Synthesis events directly on the Priority timeline alongside other progress events, so that my captured insights are visible in chronological context.
 44. As a user, I want to see historical goal completions for the Priority, so that I can review sequential milestones that have been achieved.
 
 ### 8. System Integrity & Philosophy Safeguards
@@ -102,7 +102,7 @@ Key solution principles:
 
 ### 1. Architectural Layers & Separation of Concerns
 - **Layer 1: User-Defined Semantics**: Stores the declarative hierarchy (`LifeDirection`, `Area`, `Priority`, `Goal`) and the user's plain-text operating definitions (`spark_definition`, `fire_definition`, `cook_definition`, `synthesis_definition`). The system treats these as user context and never performs semantic NLP validation on them in the MVP.
-- **Layer 2: Immutable Event Store**: All historical actions and state transitions are stored as append-only records (`ProgressEvent`, `PhaseTransition`, `Synthesis`, `GoalAchievement`). Erroneous logs are marked `VOIDED` rather than hard-deleted to preserve mathematical auditability.
+- **Layer 2: Immutable Event Store**: All historical actions and state transitions are stored as append-only records (`ProgressEvent`, `PhaseTransition`, `GoalAchievement`). Erroneous logs are marked `VOIDED` rather than hard-deleted to preserve mathematical auditability.
 - **Layer 3: Pure Deterministic Analytics Engine**: All derived metrics (progress %, velocity, rolling actual pace, required pace, projected completion date, session cadence, synthesis gaps, phase durations, portfolio momentum counters) are computed via pure functions over raw event logs and database aggregations. No derived counts (e.g., `cook_session_count`) are persisted as standalone mutable counters.
 
 ### 2. Core Domain Data Models & Schema
@@ -112,7 +112,6 @@ Key solution principles:
 - **Goal**: `id`, `user_id`, `priority_id`, `title`, `description`, `measurement_type` (`COUNT` | `BOOLEAN` | `QUALITATIVE` | `MAINTENANCE`), `unit` (nullable string), `start_value` (float), `target_value` (float), `current_value` (float), `target_date` (nullable ISO date), `status` (`ACTIVE` | `ACHIEVED` | `RETIRED`), `sequence_number` (integer), `created_at`, `achieved_at`.
 - **ProgressEvent**: `id`, `user_id`, `priority_id`, `goal_id` (nullable), `event_type` (`SPARK` | `FIRE` | `COOK_SESSION` | `SYNTHESIS` | `SERVE` | `GOAL_ACHIEVED`), `occurred_at` (ISO timestamp), `note` (text), `status` (`ACTIVE` | `VOIDED`), `created_at`.
 - **PhaseTransition**: `id`, `user_id`, `priority_id`, `from_phase`, `to_phase`, `timestamp`, `note`, `created_at`.
-- **Synthesis**: `id`, `user_id`, `priority_id`, `goal_id` (nullable), `progress_event_id`, `title`, `content` (Markdown/rich text), `created_at`, `updated_at`.
 
 ### 3. Derived Calculation Contracts
 - **Goal Progress**:
@@ -134,7 +133,6 @@ Key solution principles:
 - `POST /api/priorities/:id/phase-transitions`
 - `GET /api/priorities/:id/goals`, `POST /api/priorities/:id/goals`, `PATCH /api/goals/:id`, `POST /api/goals/:id/achieve`
 - `GET /api/events`, `POST /api/events`, `POST /api/events/:id/void`
-- `GET /api/syntheses`, `POST /api/syntheses`, `GET /api/syntheses/:id`, `PATCH /api/syntheses/:id`
 - `GET /api/analytics/dashboard` (Returns Orbit portfolio, momentum aggregates, trajectory metrics, recent activity stream, and deterministic signals).
 - `GET /api/analytics/priority/:id` (Returns detailed cadence, history timeline, phase durations, and pacing stats).
 
@@ -142,9 +140,8 @@ Key solution principles:
 - **Primary Views**:
   - `Orbit (Dashboard)`: High-level instrument panel (Orbit Phase Matrix, Momentum Counters, Goal Trajectory Cards, Recent Activity Stream, Observational Signals).
   - `Priorities`: Hierarchical tree browser and priority manager.
-  - `Priority Detail`: In-depth timeline, operating definitions, synthesis archive, goal progression, and cadence stats.
+  - `Priority Detail`: In-depth timeline, operating definitions, goal progression, and cadence stats.
   - `Log Modal ("+ Log Progress")`: Ultra-fast 3-step action: Select Event Type → Select Priority → Enter Note/Submit (defaulting timestamp to now).
-  - `Synthesis Editor`: Dedicated long-form markdown writing surface.
 - **Visual Design & Tone**:
   - Clean, dark/modern aesthetic with curated semantic colors (Spark = Amber/Yellow, Fire = Orange/Crimson, Cook = Violet/Indigo, Synthesis = Emerald/Teal, Serve = Sky/Blue).
   - Neutral observational language for all signals; zero red "overdue" or negative alert banners.
@@ -181,6 +178,7 @@ Key solution principles:
 - **No Gamification or Universal Score**: No arbitrary composite score (e.g. "82/100") or streak-maintenance punishments.
 - **No Automatic Phase Shifting**: Phases are only modified upon explicit user transition.
 - **No Social or Collaboration Features**: Single-user workspace isolation.
+- **No Long-Form Synthesis Editor or Separate Document Store**: Syntheses in the MVP are recorded as lightweight, rapid progress events with reflection notes; dedicated rich markdown editing and separate document storage are deferred to post-MVP.
 
 ---
 

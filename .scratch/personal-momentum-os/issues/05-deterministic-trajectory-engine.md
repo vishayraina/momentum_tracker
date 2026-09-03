@@ -1,4 +1,4 @@
-# 06: Deterministic Trajectory & Pacing Engine
+# 05: Deterministic Trajectory & Pacing Engine
 
 **What to build:** The application calculates and surfaces mathematical progress and trajectory analytics derived purely from raw event history and goal configuration. For measurable goals, the engine computes: goal progress %, rolling actual velocity (units completed per week), required weekly pace to target date, estimated completion date, and trajectory status badges (Ahead, On-Track, Behind, Low Data). If velocity is zero or data is sparse, the system explicitly displays "Projection unavailable" rather than fabricating dates.
 

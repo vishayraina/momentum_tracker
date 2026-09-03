@@ -1254,6 +1254,8 @@ goals(priority_id, sequence_number)
 
 # 27. Synthesis Storage
 
+*(MVP Scope Note: Dedicated synthesis document storage has been deferred to post-MVP. In the MVP, syntheses are recorded directly as lightweight progress events with reflection notes.)*
+
 Synthesis should be stored separately from a generic event if rich editing is required.
 
 ```text
@@ -1364,7 +1366,7 @@ Portfolio-level activity metrics.
 
 Goal-level projections.
 
-### SynthesisEditor
+### SynthesisEditor *(Deferred post-MVP)*
 
 Rich text reflection.
 

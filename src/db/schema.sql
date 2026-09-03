@@ -94,22 +94,6 @@ CREATE TABLE IF NOT EXISTS phase_transitions (
     FOREIGN KEY (priority_id) REFERENCES priorities(id) ON DELETE CASCADE
 );
 
--- 7. Syntheses (Long-form reflective extraction)
-CREATE TABLE IF NOT EXISTS syntheses (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    priority_id TEXT NOT NULL,
-    goal_id TEXT,
-    progress_event_id TEXT,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY (priority_id) REFERENCES priorities(id) ON DELETE CASCADE,
-    FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL,
-    FOREIGN KEY (progress_event_id) REFERENCES progress_events(id) ON DELETE SET NULL
-);
-
 -- Indexes for fast query performance
 CREATE INDEX IF NOT EXISTS idx_areas_life_direction ON areas(life_direction_id);
 CREATE INDEX IF NOT EXISTS idx_priorities_area ON priorities(area_id);
@@ -118,4 +102,4 @@ CREATE INDEX IF NOT EXISTS idx_goals_priority ON goals(priority_id);
 CREATE INDEX IF NOT EXISTS idx_events_priority ON progress_events(priority_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_events_user ON progress_events(user_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_phase_transitions_priority ON phase_transitions(priority_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_syntheses_priority ON syntheses(priority_id, created_at);
+

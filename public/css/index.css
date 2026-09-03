@@ -1350,6 +1350,15 @@ main {
   color: var(--phase-cook);
 }
 
+.event-type-card.synthesis.selected {
+  border-color: var(--phase-synthesis);
+  background: var(--phase-synthesis-bg);
+  box-shadow: 0 0 12px var(--phase-synthesis-glow);
+}
+.event-type-card.synthesis.selected .event-card-title {
+  color: var(--phase-synthesis);
+}
+
 .event-type-card.serve.selected {
   border-color: var(--phase-serve);
   background: var(--phase-serve-bg);
@@ -1510,6 +1519,7 @@ main {
 .timeline-badge.spark { background: var(--phase-spark-bg); color: var(--phase-spark); border: 1px solid var(--phase-spark-border); }
 .timeline-badge.fire { background: var(--phase-fire-bg); color: var(--phase-fire); border: 1px solid var(--phase-fire-border); }
 .timeline-badge.cook_session { background: var(--phase-cook-bg); color: var(--phase-cook); border: 1px solid var(--phase-cook-border); }
+.timeline-badge.synthesis { background: var(--phase-synthesis-bg); color: #34d399; border: 1px solid var(--phase-synthesis-border); }
 .timeline-badge.serve { background: var(--phase-serve-bg); color: var(--phase-serve); border: 1px solid var(--phase-serve-border); }
 .timeline-badge.goal_achieved { background: var(--phase-synthesis-bg); color: #34d399; border: 1px solid var(--phase-synthesis-border); }
 .timeline-badge.voided { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
