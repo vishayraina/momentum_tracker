@@ -1,14 +1,14 @@
-# 06: Orbit Dashboard & Portfolio Momentum Instrument Panel
+# 06: Kitchen Station Dashboard & Portfolio Heat Instrument Panel
 
-**What to build:** The user can view the complete portfolio-level dashboard in under 10 seconds. The screen presents 5 primary sections: (A) Orbit View displaying active priorities partitioned into Spark, Fire, and Cook columns; (B) Momentum Panel showing aggregate activity counts (Sparks, Fires, Cook Sessions, Syntheses, Goals Achieved) over selectable windows (7d, 30d, 90d, all-time); (C) Trajectory Summary comparing actual vs required pace for active goals; (D) Chronological Recent Activity feed across all priorities; and (E) Neutral Observational Signals (e.g. "8 Cook Sessions since last synthesis", "Pacing below required trajectory").
+**What to build:** The user can view the complete portfolio-level kitchen dashboard in under 10 seconds. The screen presents 5 primary sections: (A) Station View organizing active kitchen priorities partitioned into Station Heat columns (`HIGH_HEAT`, `SIMMER`, `PREP`, `PANTRY`); (B) Portfolio Heat Panel displaying aggregate Heat Vector counts (`MISE_EN_PLACE`, `SEAR`, `DEEP_SIMMER`, `TASTING_NOTE`, `PLATE`, `ORDER_FULFILLED`) over selectable windows (7d, 30d, 90d, all-time); (C) Trajectory Summary comparing actual vs required pace for active dishes across stations; (D) Global Chronological Feed of culinary activity and reflection notes across all stations; and (E) Neutral Observational Signals (e.g. "Simmer station with no heat in 14 days", "Pacing below required trajectory").
 
-**Blocked by:** 04: Priority Phase Transitions & State History, 05: Deterministic Trajectory & Pacing Engine
+**Blocked by:** 05: Deterministic Trajectory & Dish Pacing Engine, 08: 3-Tier Hierarchy Simplification & Station Heat Operating States, 10: Event-Sourced Deltas & Unified Heat & Dish Progress Logging
 
 **Status:** ready-for-agent
 
-- [ ] Section A (Orbit): Visual matrix organizing active priorities by current phase (`SPARK`, `FIRE`, `COOK`).
-- [ ] Section B (Momentum): Aggregate event counts with configurable time window filters (7d, 30d, 90d, all-time) derived purely from `progress_events`.
-- [ ] Section C (Trajectory): Multi-goal progress and pace comparison cards.
-- [ ] Section D (Recent Activity): Global chronological feed of all logged events across priorities.
-- [ ] Section E (Signals): Deterministic, non-judgmental observational notices (e.g., Cook sessions since last synthesis progress event, pacing gaps).
-- [ ] End-to-end integration tests verify dashboard aggregation performance and signal generation.
+- [ ] Section A (Stations): Visual matrix organizing active kitchen priorities by current Station Heat (`HIGH_HEAT`, `SIMMER`, `PREP`, `PANTRY`).
+- [ ] Section B (Heat Panel): Aggregate Heat Vector counts (`MISE_EN_PLACE`, `SEAR`, `DEEP_SIMMER`, `TASTING_NOTE`, `PLATE`, `ORDER_FULFILLED`) with configurable time windows (7d, 30d, 90d, all-time).
+- [ ] Section C (Trajectory): Multi-station dish progress and pace comparison cards.
+- [ ] Section D (Recent Activity): Global chronological feed of all logged heat events and plates across stations.
+- [ ] Section E (Signals): Deterministic, non-judgmental observational notices (e.g., simmer stations without heat in 14+ days, dish pacing gaps).
+- [ ] Automated integration tests verify dashboard aggregation query performance and signal generation accuracy.
