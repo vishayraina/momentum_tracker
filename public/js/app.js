@@ -239,8 +239,11 @@ function renderWorkspace() {
   }
 
   // Filter hierarchy
+  const isFiltering = (state.selectedPhaseFilter !== 'ALL' || !!state.searchQuery);
+  let totalMatchingPriorities = 0;
+
   state.hierarchy.forEach(dir => {
-    const filteredAreas = dir.areas.map(area => {
+    const processedAreas = dir.areas.map(area => {
       const filteredPriorities = area.priorities.filter(p => {
         // Phase filter
         if (state.selectedPhaseFilter !== 'ALL' && p.current_phase !== state.selectedPhaseFilter) {
@@ -258,15 +261,19 @@ function renderWorkspace() {
         return true;
       });
 
+      totalMatchingPriorities += filteredPriorities.length;
       return {
         ...area,
         priorities: filteredPriorities
       };
     });
 
-    // Check if direction has any matching areas or if search is active
-    const hasPriorities = filteredAreas.some(a => a.priorities.length > 0);
-    if (state.searchQuery && !hasPriorities && !dir.name.toLowerCase().includes(state.searchQuery.toLowerCase())) {
+    // When filtering is active, skip empty areas and directions with no matches
+    const visibleAreas = isFiltering
+      ? processedAreas.filter(a => a.priorities.length > 0)
+      : processedAreas;
+
+    if (isFiltering && visibleAreas.length === 0) {
       return;
     }
 
@@ -283,16 +290,16 @@ function renderWorkspace() {
         </div>
         <div class="header-actions">
           <button class="btn btn-secondary btn-sm btn-create-area" data-dir-id="${dir.id}">+ Area</button>
-          <button class="btn btn-ghost btn-sm btn-edit-dir" data-dir-id="${dir.id}" title="Edit Direction">✎</button>
-          <button class="btn btn-ghost btn-sm btn-delete-dir" data-dir-id="${dir.id}" title="Delete Direction">🗑</button>
+          <button class="btn btn-ghost btn-sm btn-edit-dir" data-dir-id="${dir.id}" title="Edit Direction" aria-label="Edit Direction">✎</button>
+          <button class="btn btn-ghost btn-sm btn-delete-dir" data-dir-id="${dir.id}" title="Delete Direction" aria-label="Delete Direction">🗑</button>
         </div>
       </div>
       <div class="areas-container">
-        ${filteredAreas.length === 0 ? `
+        ${visibleAreas.length === 0 ? `
           <div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">
             No areas yet in this life direction. Click "+ Area" to add one.
           </div>
-        ` : filteredAreas.map(area => `
+        ` : visibleAreas.map(area => `
           <div class="area-block">
             <div class="area-header">
               <div class="area-title-wrap">
@@ -301,8 +308,8 @@ function renderWorkspace() {
               </div>
               <div class="header-actions">
                 <button class="btn btn-primary btn-sm btn-create-priority" data-area-id="${area.id}">+ Priority</button>
-                <button class="btn btn-ghost btn-sm btn-edit-area" data-area-id="${area.id}" title="Edit Area">✎</button>
-                <button class="btn btn-ghost btn-sm btn-delete-area" data-area-id="${area.id}" title="Delete Area">🗑</button>
+                <button class="btn btn-ghost btn-sm btn-edit-area" data-area-id="${area.id}" title="Edit Area" aria-label="Edit Area">✎</button>
+                <button class="btn btn-ghost btn-sm btn-delete-area" data-area-id="${area.id}" title="Delete Area" aria-label="Delete Area">🗑</button>
               </div>
             </div>
             ${area.priorities.length === 0 ? `
@@ -322,6 +329,33 @@ function renderWorkspace() {
     container.appendChild(dirSection);
   });
 
+  if (isFiltering && totalMatchingPriorities === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <h3 class="empty-title">No Priorities Found</h3>
+        <p class="empty-desc">No active priorities match ${state.selectedPhaseFilter !== 'ALL' ? `the selected phase filter` : ''} ${state.searchQuery ? `query "${escapeHtml(state.searchQuery)}"` : ''}.</p>
+        <button class="btn btn-secondary" id="btnResetFilterState">Reset Filters</button>
+      </div>
+    `;
+    document.getElementById('btnResetFilterState')?.addEventListener('click', () => {
+      state.selectedPhaseFilter = 'ALL';
+      state.searchQuery = '';
+      elements.searchInput.value = '';
+      elements.filterChips.forEach(c => {
+        if (c.dataset.phase === 'ALL') c.classList.add('active');
+        else c.classList.remove('active');
+      });
+      renderWorkspace();
+    });
+    return;
+  }
+
   attachWorkspaceListeners();
 }
 
@@ -338,10 +372,10 @@ function renderPriorityCard(p) {
           ${p.description ? `<p class="priority-desc">${escapeHtml(p.description)}</p>` : ''}
         </div>
         <div style="display: flex; align-items: center; gap: 0.35rem;">
-          <span class="phase-pill ${phaseLower} phase-pill-clickable btn-card-phase-pill" data-id="${p.id}" title="${escapeHtml(p.current_phase_duration_text || p.current_phase)} · Click to change operating mode">
-            ● ${p.current_phase} · ${p.days_in_current_phase || 0}d
-          </span>
-          <button class="btn btn-ghost btn-sm btn-card-phase-switch" data-id="${p.id}" title="Transition operating mode">⇄</button>
+          <button class="phase-pill ${phaseLower} phase-pill-clickable btn-card-phase-pill" data-id="${p.id}" title="${escapeHtml(p.current_phase_duration_text || p.current_phase)} · Click to change operating mode" aria-label="Current phase: ${p.current_phase}. Click to transition operating mode.">
+            <span>● ${p.current_phase} · ${p.days_in_current_phase || 0}d</span>
+            <span class="phase-switch-icon" aria-hidden="true">⇄</span>
+          </button>
         </div>
       </div>
 
@@ -354,8 +388,8 @@ function renderPriorityCard(p) {
               <span class="goal-type-badge ${goal.measurement_type.toLowerCase()}">${goal.measurement_type}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.25rem;">
-              <button class="btn btn-ghost btn-sm btn-edit-goal" data-prio-id="${p.id}" data-goal-id="${goal.id}" title="Edit Milestone">✎</button>
-              <button class="btn btn-ghost btn-sm btn-retire-goal" data-goal-id="${goal.id}" title="Retire Milestone">✕</button>
+              <button class="btn btn-ghost btn-sm btn-edit-goal" data-prio-id="${p.id}" data-goal-id="${goal.id}" title="Edit Milestone" aria-label="Edit Milestone">✎</button>
+              <button class="btn btn-ghost btn-sm btn-retire-goal" data-goal-id="${goal.id}" title="Retire Milestone" aria-label="Retire Milestone">✕</button>
             </div>
           </div>
 
@@ -399,17 +433,9 @@ function renderPriorityCard(p) {
         </div>
       `}
 
-      <!-- Definitions Summary Chips -->
-      <div class="definitions-summary" title="Click a definition to view full contract">
-        <div class="def-chip spark-chip btn-inspect-def" data-id="${p.id}" data-type="spark">Spark</div>
-        <div class="def-chip fire-chip btn-inspect-def" data-id="${p.id}" data-type="fire">Fire</div>
-        <div class="def-chip cook-chip btn-inspect-def" data-id="${p.id}" data-type="cook">Cook</div>
-        <div class="def-chip synthesis-chip btn-inspect-def" data-id="${p.id}" data-type="synthesis">Synthesis</div>
-      </div>
-
       <!-- Card Footer -->
       <div class="priority-footer">
-        <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+        <div class="priority-footer-left">
           <button class="btn btn-ghost btn-sm btn-card-quick-log" data-prio-id="${p.id}" data-goal-id="${p.active_goal?.id || ''}" title="Log progress event for this priority">
             ⚡ + Log
           </button>
@@ -420,13 +446,13 @@ function renderPriorityCard(p) {
             🏆 Milestones (${p.achieved_goals_count || 0})
           </button>
         </div>
-        <div class="priority-actions">
-          <button class="btn btn-ghost btn-sm btn-inspect" data-id="${p.id}" title="View Operating Definitions">Definitions</button>
-          <button class="btn btn-ghost btn-sm btn-edit-priority" data-id="${p.id}" title="Edit Priority">✎</button>
-          <button class="btn btn-ghost btn-sm btn-toggle-archive" data-id="${p.id}" title="${p.is_active ? 'Archive Priority' : 'Unarchive Priority'}">
+        <div class="priority-footer-right">
+          <button class="btn btn-ghost btn-sm btn-inspect" data-id="${p.id}" title="View Operating Definitions & Details">Definitions</button>
+          <button class="btn btn-ghost btn-sm btn-edit-priority" data-id="${p.id}" title="Edit Priority" aria-label="Edit Priority">✎</button>
+          <button class="btn btn-ghost btn-sm btn-toggle-archive" data-id="${p.id}" title="${p.is_active ? 'Archive Priority' : 'Unarchive Priority'}" aria-label="${p.is_active ? 'Archive Priority' : 'Unarchive Priority'}">
             ${p.is_active ? '📦' : '↻'}
           </button>
-          <button class="btn btn-ghost btn-sm btn-delete-priority" data-id="${p.id}" title="Delete Priority">🗑</button>
+          <button class="btn btn-ghost btn-sm btn-delete-priority" data-id="${p.id}" title="Delete Priority" aria-label="Delete Priority">🗑</button>
         </div>
       </div>
     </div>

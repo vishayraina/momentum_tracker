@@ -49,16 +49,15 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
           </svg>
-          + Log Progress
+          <span>+ Log Progress</span>
         </button>
-        <button class="btn btn-secondary" id="btnNewPriority">
+        <button class="btn btn-secondary btn-header-secondary" id="btnNewPriority" title="Add a new priority to orbit">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 5v14M5 12h14"/>
           </svg>
-          New Priority
+          <span>New Priority</span>
         </button>
-        <button class="btn btn-secondary" id="btnNewArea">+ Area</button>
-        <button class="btn btn-secondary" id="btnNewDirection">+ Direction</button>
+        <button class="btn btn-secondary btn-header-secondary" id="btnNewDirection" title="Add an overarching life direction">+ Direction</button>
       </div>
     </div>
   </header>
@@ -76,11 +75,11 @@
       </div>
 
       <div class="search-box">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/>
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input type="text" id="searchInput" class="search-input" placeholder="Search priorities, areas, descriptions..." autocomplete="off">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search priorities, areas, descriptions..." autocomplete="off" aria-label="Search priorities, areas, descriptions">
       </div>
     </section>
 
@@ -409,7 +408,7 @@
             <details class="advanced-timestamp-details">
               <summary style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">Customize transition timestamp (defaults to now)</summary>
               <div style="margin-top: 0.5rem;">
-                <input type="datetime-local" class="form-input form-input-sm" id="transitionTimestamp" />
+                <input type="datetime-local" class="form-input form-input-sm" id="transitionTimestamp" aria-label="Custom transition timestamp" />
               </div>
             </details>
           </div>
@@ -762,48 +761,17 @@
         <button type="button" class="btn btn-ghost btn-sm modal-close" aria-label="Close modal">✕</button>
       </div>
       <div class="modal-body">
-        <!-- Event Count Summary Bar -->
-        <div class="timeline-summary-bar" id="timelineSummaryBar">
-          <div class="summary-pill" data-filter="ALL" title="Total recorded events">
-            <span>Total:</span>
-            <strong id="tlTotalCount">0</strong>
-          </div>
-          <div class="summary-pill spark" data-filter="SPARK" title="Spark continuity events">
-            <span>⚡ Sparks:</span>
-            <strong id="tlSparkCount">0</strong>
-          </div>
-          <div class="summary-pill fire" data-filter="FIRE" title="Deliberate energy bursts">
-            <span>🔥 Fires:</span>
-            <strong id="tlFireCount">0</strong>
-          </div>
-          <div class="summary-pill cook" data-filter="COOK_SESSION" title="Deep work sessions">
-            <span>🍲 Cooks:</span>
-            <strong id="tlCookCount">0</strong>
-          </div>
-          <div class="summary-pill serve" data-filter="SERVE" title="External deliverables">
-            <span>🚀 Serves:</span>
-            <strong id="tlServeCount">0</strong>
-          </div>
-          <div class="summary-pill goal" data-filter="GOAL_ACHIEVED" title="Milestones achieved">
-            <span>🎯 Milestones:</span>
-            <strong id="tlGoalCount">0</strong>
-          </div>
-          <div class="summary-pill voided" data-filter="VOIDED" title="Voided audit records">
-            <span>🚫 Voided:</span>
-            <strong id="tlVoidedCount">0</strong>
-          </div>
-        </div>
-
-        <!-- Filter Controls -->
+        <!-- Unified Filter & Action Row -->
         <div class="timeline-filter-row">
           <div class="timeline-filter-chips" id="timelineFilterChips">
-            <button class="filter-chip active" data-tl-filter="ALL">All Entries</button>
-            <button class="filter-chip" data-tl-filter="ACTIVE">Active Only</button>
-            <button class="filter-chip spark" data-tl-filter="SPARK">Sparks</button>
-            <button class="filter-chip fire" data-tl-filter="FIRE">Fires</button>
-            <button class="filter-chip cook" data-tl-filter="COOK_SESSION">Cooks</button>
-            <button class="filter-chip serve" data-tl-filter="SERVE">Serves</button>
-            <button class="filter-chip" data-tl-filter="VOIDED">Voided</button>
+            <button class="filter-chip active" data-tl-filter="ALL">All <span class="chip-count" id="tlTotalCount">0</span></button>
+            <button class="filter-chip" data-tl-filter="ACTIVE">Active</button>
+            <button class="filter-chip spark" data-tl-filter="SPARK">⚡ Sparks <span class="chip-count" id="tlSparkCount">0</span></button>
+            <button class="filter-chip fire" data-tl-filter="FIRE">🔥 Fires <span class="chip-count" id="tlFireCount">0</span></button>
+            <button class="filter-chip cook" data-tl-filter="COOK_SESSION">🍲 Cooks <span class="chip-count" id="tlCookCount">0</span></button>
+            <button class="filter-chip serve" data-tl-filter="SERVE">🚀 Serves <span class="chip-count" id="tlServeCount">0</span></button>
+            <button class="filter-chip goal" data-tl-filter="GOAL_ACHIEVED">🎯 Milestones <span class="chip-count" id="tlGoalCount">0</span></button>
+            <button class="filter-chip voided" data-tl-filter="VOIDED">🚫 Voided <span class="chip-count" id="tlVoidedCount">0</span></button>
           </div>
           <button class="btn btn-secondary btn-sm" id="btnTimelineQuickLog">+ Log Event</button>
         </div>
